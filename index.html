@@ -103,7 +103,7 @@ function renderPanel() {
   let h = '';
   if (step === 0) h = `<h2>業態・風格</h2><p class="sub">先選賣什麼、要什麼風格；後面的道具會先只顯示這些風格。</p>
     <h3>你賣的是什麼</h3>${chips('業態', CHOICES.業態)}<h3>風格（可複選）</h3>${chips('風格', Object.values(STYLES), true)}`;
-  else if (step === 1) h = `<h2>角度</h2><p class="sub">角度決定看不看得到後景（鐵則 11）。</p>${chips('角度', CHOICES.角度)}<h3>圖片比例</h3><p class="sub">看圖要放哪裡：IG 貼文選 4:5，限動選 9:16。</p>${chips('比例', RATIOS)}`;
+  else if (step === 1) h = `<h2>角度</h2><p class="sub">角度決定看不看得到後景（鐵則 11）。</p>${['中式餐館／小吃','火鍋','日式料理'].includes(S.業態) ? '<div class="warn">鹹食（湯、麵、肉、小菜）建議「斜拍」或更低的 15–35 度；湯麵不要用高俯（基準第 8 條）。</div>' : ''}${chips('角度', CHOICES.角度)}<h3>圖片比例</h3><p class="sub">看圖要放哪裡：IG 貼文選 4:5，限動選 9:16。</p>${chips('比例', RATIOS)}`;
   else if (step === 2) h = `<h2>光線・故事</h2><p class="sub">光決定情緒；故事時刻會在模擬圖加上生活痕跡。</p>${chips('光線', CHOICES.光線)}<h3>故事時刻</h3>${chips('故事', CHOICES.故事)}`;
   else {
     // 有搜尋字時跨所有類別、所有風格找
@@ -152,7 +152,7 @@ function buildPrompt(picked) {
   if (story && story.prompt) parts.push(`${story.prompt}。`);
   if (a) parts.push(`鏡頭：約 ${a.deg} 度${a.deg >= 90 ? '正俯拍' : '俯角'}，中長焦無變形，${ratioWord(S.比例)}。`);
   else if (S.比例) parts.push(`畫面比例：${ratioWord(S.比例)}。`);
-  parts.push('畫面中只有一杯飲料。包裝與道具上不要出現任何文字、logo 或圖案。不要人物、不要人臉。所有物件的陰影朝同一個方向。');
+  parts.push('如果畫面有飲料，只有一杯，而且必須是店家有賣的。包裝與道具上不要出現任何文字、logo 或圖案。不要人物、不要人臉。所有物件的陰影朝同一個方向。');
   return parts.join('\n');
 }
 
@@ -166,7 +166,7 @@ function buildJob(subj) {
     `角度／光線／故事：${[S.角度, S.光線, S.故事].filter(Boolean).join('｜') || '未選'}`,
     `道具（${picked.length} 樣）：${picked.map(p => p.name).join('、') || '無'}`,
     '', '提示詞：', $('#prompt').value, '',
-    '請照作業規則：先報價等我回 k；' + (subj ? '出圖後做三道鎖對照驗收頁；' : '') + '出圖要過鐵則 11 角度檢查與基準 8 條。'];
+    '請照作業規則：先報價等我回 k；' + (subj ? '出圖後做三道鎖對照驗收頁；' : '') + '出圖要過鐵則 11 角度檢查與基準 9 條。'];
   return lines.join('\n');
 }
 
