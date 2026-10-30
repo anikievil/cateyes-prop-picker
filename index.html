@@ -39,6 +39,11 @@ h3{border-left:4px solid var(--ink);padding-left:8px;font-size:16px;margin:22px 
 .next{margin-top:28px;background:var(--ink);color:#fff;border:0;border-radius:999px;padding:12px 22px;font-size:15px;cursor:pointer}
 .warn{background:var(--warn);border:1px solid var(--warn-line);border-radius:8px;padding:10px 12px;font-size:13px;margin:10px 0}
 .sel{font-size:14px;margin:4px 0;display:flex;justify-content:space-between;gap:6px}
+.grp{margin:12px 0 4px;padding-top:10px;border-top:1px solid var(--line);font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px}
+.grp:first-of-type{border-top:0;padding-top:0}
+.grp i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.grp small{color:var(--muted);font-weight:400}
+.sel{border-left:3px solid var(--c,#ccc);padding-left:8px}
 .sel button{border:0;background:none;color:var(--muted);cursor:pointer}
 label.tog{font-size:13px;color:var(--muted);display:inline-flex;gap:6px;align-items:center;margin-bottom:10px}
 /* 清單頁 */
@@ -81,6 +86,8 @@ try { S = { ...S, ...JSON.parse(localStorage.getItem('propPick') || '{}') } } ca
 const save = () => { try { localStorage.setItem('propPick', JSON.stringify(S)) } catch (e) {} };
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// 已選清單分組用的顏色（一類一色）
+const CAT_COLOR = { 桌面: '#8b6b4a', 布料: '#c9a46a', 後景: '#7a8fa3', 容器: '#6f9a7a', 餐具: '#9a8f86', 軟裝: '#c27b6b', 墊高: '#8f7aa8' };
 const angle = () => CHOICES.角度.find(a => a.name === S.角度);
 const thumb = p => `<div class="thumb"><img src="img/${p.id}.jpg" alt="${esc(p.name)}" onerror="this.replaceWith(this.alt)"></div>`;
 
@@ -120,7 +127,8 @@ function renderSide() {
   if (!picked.some(p => p.cat === '桌面')) warns.push('還沒選桌面。');
   if (angle() && !angle().bg && picked.some(p => p.cat === '後景')) warns.push('高角度看不到後景，後景會被忽略。');
   $('#side').innerHTML = `<h2 style="font-size:17px">已選 ${picked.length} 樣</h2><p class="sub">${esc(tags) || '還沒選業態和風格。'}</p>
-    ${picked.map(p => `<div class="sel"><span>${esc(p.cat)}｜${esc(p.name)}</span><button data-rm="${p.id}" aria-label="移除">✕</button></div>`).join('') || '<p class="sub">還沒挑東西。</p>'}
+    ${CATS.filter(c => picked.some(p => p.cat === c)).map(c => `<div class="grp"><i style="background:${CAT_COLOR[c]}"></i>${c}<small>${picked.filter(p => p.cat === c).length}</small></div>` +
+      picked.filter(p => p.cat === c).map(p => `<div class="sel" style="--c:${CAT_COLOR[c]}"><span>${esc(p.name)}<small style="color:var(--muted)">｜${esc(p.style)}</small></span><button data-rm="${p.id}" aria-label="移除">✕</button></div>`).join('')).join('') || '<p class="sub">還沒挑東西。</p>'}
     ${warns.map(w => `<div class="warn">${w}</div>`).join('')}
     <div class="bar"><button id="reset">全部清空</button></div>`;
 }
