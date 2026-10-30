@@ -71,8 +71,11 @@ textarea{width:100%;min-height:150px;font:14px/1.6 inherit;padding:10px;border:1
 <script src="props.js"></script>
 <script>
 // 狀態只存在這台裝置（localStorage），清掉也不影響使用
-const STEPS = ['業態・風格', '角度', '光線・故事', ...CATS];
-const blank = () => ({ 業態: '', 風格: [], 角度: '', 光線: '', 故事: '', props: [] });
+const STEPS = ['業態・風格', '角度・比例', '光線・故事', ...CATS];
+// 比例直接當生圖的 aspect_ratio 用
+const RATIOS = [{ name: '4:5', note: '直式・IG 貼文' }, { name: '9:16', note: '直式・限動、Reels' }, { name: '1:1', note: '方形' }, { name: '3:2', note: '橫式・官網、菜單' }, { name: '16:9', note: '橫幅・封面' }];
+const ratioWord = r => ({ '4:5': '直式 4:5', '9:16': '直式 9:16', '1:1': '方形 1:1', '3:2': '橫式 3:2', '16:9': '橫式 16:9' }[r] || '直式');
+const blank = () => ({ 業態: '', 風格: [], 角度: '', 比例: '', 光線: '', 故事: '', props: [] });
 let S = blank(), step = 0, showAll = false, query = '';
 try { S = { ...S, ...JSON.parse(localStorage.getItem('propPick') || '{}') } } catch (e) {}
 const save = () => { try { localStorage.setItem('propPick', JSON.stringify(S)) } catch (e) {} };
@@ -93,7 +96,7 @@ function renderPanel() {
   let h = '';
   if (step === 0) h = `<h2>業態・風格</h2><p class="sub">先選賣什麼、要什麼風格；後面的道具會先只顯示這些風格。</p>
     <h3>你賣的是什麼</h3>${chips('業態', CHOICES.業態)}<h3>風格（可複選）</h3>${chips('風格', Object.values(STYLES), true)}`;
-  else if (step === 1) h = `<h2>角度</h2><p class="sub">角度決定看不看得到後景（鐵則 11）。</p>${chips('角度', CHOICES.角度)}`;
+  else if (step === 1) h = `<h2>角度</h2><p class="sub">角度決定看不看得到後景（鐵則 11）。</p>${chips('角度', CHOICES.角度)}<h3>圖片比例</h3><p class="sub">看圖要放哪裡：IG 貼文選 4:5，限動選 9:16。</p>${chips('比例', RATIOS)}`;
   else if (step === 2) h = `<h2>光線・故事</h2><p class="sub">光決定情緒；故事時刻會在模擬圖加上生活痕跡。</p>${chips('光線', CHOICES.光線)}<h3>故事時刻</h3>${chips('故事', CHOICES.故事)}`;
   else {
     // 有搜尋字時跨所有類別、所有風格找
@@ -112,7 +115,7 @@ function renderPanel() {
 
 function renderSide() {
   const picked = PROPS.filter(p => S.props.includes(p.id));
-  const tags = [S.業態, S.風格.join('、'), S.角度, S.光線, S.故事].filter(Boolean).join('｜');
+  const tags = [S.業態, S.風格.join('、'), S.角度, S.比例, S.光線, S.故事].filter(Boolean).join('｜');
   const warns = [];
   if (!picked.some(p => p.cat === '桌面')) warns.push('還沒選桌面。');
   if (angle() && !angle().bg && picked.some(p => p.cat === '後景')) warns.push('高角度看不到後景，後景會被忽略。');
@@ -139,7 +142,8 @@ function buildPrompt(picked) {
   if (props) parts.push(`道具：${props}，每樣都小、不搶主角，畫面飽滿但有秩序，四角有小物收邊。`);
   if (light) parts.push(`光線：${light.prompt}。`);
   if (story && story.prompt) parts.push(`${story.prompt}。`);
-  if (a) parts.push(`鏡頭：約 ${a.deg} 度${a.deg >= 90 ? '正俯拍' : '俯角'}，中長焦無變形，直式。`);
+  if (a) parts.push(`鏡頭：約 ${a.deg} 度${a.deg >= 90 ? '正俯拍' : '俯角'}，中長焦無變形，${ratioWord(S.比例)}。`);
+  else if (S.比例) parts.push(`畫面比例：${ratioWord(S.比例)}。`);
   parts.push('畫面中只有一杯飲料。包裝與道具上不要出現任何文字、logo 或圖案。不要人物、不要人臉。所有物件的陰影朝同一個方向。');
   return parts.join('\n');
 }
@@ -150,6 +154,7 @@ function buildJob(subj) {
   const lines = ['【貓眼道具選物｜生圖工作單】',
     `模式：${subj ? 'B 路線：客戶主體照重畫（照片附在這則訊息；店家已書面同意）' : '只要模擬圖（不放客戶主體）'}`,
     `業態／風格：${S.業態 || '未選'}｜${S.風格.join('＋') || '不限'}`,
+    `比例：${S.比例 || '未選（預設 4:5）'}`,
     `角度／光線／故事：${[S.角度, S.光線, S.故事].filter(Boolean).join('｜') || '未選'}`,
     `道具（${picked.length} 樣）：${picked.map(p => p.name).join('、') || '無'}`,
     '', '提示詞：', $('#prompt').value, '',
@@ -167,7 +172,7 @@ function renderSheet() {
     <div class="bar noprint"><button id="back">← 回去改</button><button onclick="print()">列印／存 PDF</button><button id="copy">複製提示詞</button></div>
     <p style="letter-spacing:.2em;color:var(--muted);font-size:12px;margin:0">CATEYES STUDIO ・ PROP LIST ・ ${today}</p>
     <h2 style="font-size:24px;margin:6px 0">${esc(S.業態 || '未命名')}｜${esc(S.風格.join('＋') || '不限風格')}</h2>
-    <p class="sub">${esc([S.角度, S.光線, S.故事].filter(Boolean).join('｜'))}</p>
+    <p class="sub">${esc([S.角度, S.比例, S.光線, S.故事].filter(Boolean).join('｜'))}</p>
     <div class="mock"><img src="img/mock.jpg" style="width:100%;height:100%;object-fit:cover;border-radius:6px" alt="模擬圖：把下方提示詞貼給 Claude，報價確認後生成，存成 img/mock.jpg 就會顯示在這裡" onerror="this.replaceWith(this.alt)"></div>
     <p class="sub" style="font-size:12px">模擬圖｜依本清單生成，實際拍攝以實物為準。道具圖為 AI 生成，拍攝前請確認實物。</p>
     ${block('桌面・布料・後景', sur, 0)}${block('容器・餐具・軟裝・墊高', rest, sur.length)}
