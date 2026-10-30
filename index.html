@@ -144,6 +144,19 @@ function buildPrompt(picked) {
   return parts.join('\n');
 }
 
+// 給 Claude 的工作單：一段貼上就能報價、生圖的文字
+function buildJob(subj) {
+  const picked = PROPS.filter(p => S.props.includes(p.id));
+  const lines = ['【貓眼道具選物｜生圖工作單】',
+    `模式：${subj ? 'B 路線：客戶主體照重畫（照片附在這則訊息；店家已書面同意）' : '只要模擬圖（不放客戶主體）'}`,
+    `業態／風格：${S.業態 || '未選'}｜${S.風格.join('＋') || '不限'}`,
+    `角度／光線／故事：${[S.角度, S.光線, S.故事].filter(Boolean).join('｜') || '未選'}`,
+    `道具（${picked.length} 樣）：${picked.map(p => p.name).join('、') || '無'}`,
+    '', '提示詞：', $('#prompt').value, '',
+    '請照作業規則：先報價等我回 k；' + (subj ? '出圖後做三道鎖對照驗收頁；' : '') + '出圖要過鐵則 11 角度檢查與基準 8 條。'];
+  return lines.join('\n');
+}
+
 function renderSheet() {
   const picked = PROPS.filter(p => S.props.includes(p.id));
   const sur = picked.filter(p => ['桌面', '布料', '後景'].includes(p.cat)), rest = picked.filter(p => !sur.includes(p));
@@ -158,13 +171,26 @@ function renderSheet() {
     <div class="mock"><img src="img/mock.jpg" style="width:100%;height:100%;object-fit:cover;border-radius:6px" alt="模擬圖：把下方提示詞貼給 Claude，報價確認後生成，存成 img/mock.jpg 就會顯示在這裡" onerror="this.replaceWith(this.alt)"></div>
     <p class="sub" style="font-size:12px">模擬圖｜依本清單生成，實際拍攝以實物為準。道具圖為 AI 生成，拍攝前請確認實物。</p>
     ${block('桌面・布料・後景', sur, 0)}${block('容器・餐具・軟裝・墊高', rest, sur.length)}
-    <h3 class="noprint">模擬圖提示詞（已照共用結尾組好，送出前再校對一次）</h3>
-    <textarea id="prompt" class="noprint">${esc(buildPrompt(picked))}</textarea>
+    <div class="noprint">
+      <h3>送給 Claude 生圖（半自動）</h3>
+      <p class="sub">照片只會留在這支手機／電腦的瀏覽器裡，不會上傳到網站。</p>
+      <label class="tog"><input type="radio" name="mode" value="mock" checked> 只要模擬圖（不放客戶的主體）</label><br>
+      <label class="tog"><input type="radio" name="mode" value="subject"> 要放客戶的主體照片（B 路線：重畫＋三道鎖）</label>
+      <div id="subjectBox" hidden>
+        <input type="file" id="subjectFile" accept="image/*">
+        <img id="subjectPreview" alt="主體照預覽" hidden style="max-width:220px;border-radius:6px;margin:8px 0;display:block">
+        <label class="tog"><input type="checkbox" id="consent"> 店家已書面同意照片上傳到生圖服務（交付規則 1）</label>
+      </div>
+      <div class="bar"><button id="copyJob">① 複製工作單</button></div>
+      <p class="sub">② 回到 Claude 對話，貼上工作單${'，並把主體照片拖進對話'}；③ Claude 報價，你回「k」才會生圖。</p>
+      <h3>模擬圖提示詞（已照共用結尾組好，送出前再校對一次）</h3>
+      <textarea id="prompt">${esc(buildPrompt(picked))}</textarea>
+    </div>
     <p class="sub" style="margin-top:24px">貓眼影像 CATEYES STUDIO　共 ${picked.length} 樣道具</p></div>`;
 }
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-k],[data-id],[data-step],[data-rm],#nextBtn,#finish,#back,#reset,#copy');
+  const t = e.target.closest('[data-k],[data-id],[data-step],[data-rm],#nextBtn,#finish,#back,#reset,#copy,#copyJob');
   if (!t) return;
   if (t.dataset.k) {
     const k = t.dataset.k, v = t.dataset.v;
@@ -177,10 +203,21 @@ document.addEventListener('click', e => {
   else if (t.id === 'reset') { if (confirm('確定全部清空？')) S = blank(); }
   else if (t.id === 'finish') { renderSheet(); $('#app').hidden = true; $('#sheetWrap').hidden = false; scrollTo(0, 0); return; }
   else if (t.id === 'back') { $('#app').hidden = false; $('#sheetWrap').hidden = true; return; }
+  else if (t.id === 'copyJob') {
+    const subj = document.querySelector('input[name=mode]:checked').value === 'subject';
+    if (subj && !$('#subjectFile').files.length) { alert('請先選主體照片，或改選「只要模擬圖」。'); return; }
+    if (subj && !$('#consent').checked) { alert('要先取得店家書面同意，才能把客戶照片送去生圖（交付規則 1）。'); return; }
+    navigator.clipboard.writeText(buildJob(subj)).then(() => t.textContent = '已複製 ✓ 回對話貼上');
+    return;
+  }
   else if (t.id === 'copy') { navigator.clipboard.writeText($('#prompt').value).then(() => t.textContent = '已複製 ✓'); return; }
   render();
 });
-document.addEventListener('change', e => { if (e.target.id === 'all') { showAll = e.target.checked; renderPanel(); } });
+document.addEventListener('change', e => {
+  if (e.target.id === 'all') { showAll = e.target.checked; renderPanel(); }
+  if (e.target.name === 'mode') $('#subjectBox').hidden = e.target.value !== 'subject';
+  if (e.target.id === 'subjectFile' && e.target.files[0]) { const im = $('#subjectPreview'); im.src = URL.createObjectURL(e.target.files[0]); im.hidden = false; }
+});
 $('#search').addEventListener('input', e => { query = e.target.value.trim(); render(); });
 render();
 </script>
