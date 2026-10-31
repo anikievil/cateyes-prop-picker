@@ -134,12 +134,14 @@ function buildPrompt(props) {
   return parts.join('\n');
 }
 function board(props) {   // 版面座標：菜照空間範本的位置，道具接著排；給合成工具 board 指令用
-  let sl = SLOTS[Q.space]; if (!sl) return null;
+  let sl = slotsFor(Q.space, Q.dishes[0]); if (!sl) return null;
   const use = USES.find(u => u.name === Q.use);
   if (use && use.ws) sl = sl.map(([x, y, w]) => [x, +(.33 + y * .67).toFixed(3), w]);   // 上方三分之一留白：全部往下移到下方三分之二
   const it = {}; Q.dishes.forEach((d, i) => { const s = sl[Math.min(i, sl.length - 1)]; it[d] = { x: s[0], y: s[1], w: s[2] }; });
   const spareY = use && use.ws ? .95 : .08;   // 範本格子用完的道具：留白時排在最下面，不佔放字區
   props.forEach((p, i) => { const s = sl[Q.dishes.length + i]; it[p.name] = s ? { x: s[0], y: s[1], w: Math.min(s[2], .22) } : { x: +(.12 + (i % 5) * .19).toFixed(2), y: spareY, w: .14 }; });
+  const r = (USES.find(u => u.name === Q.use) || {}).ratio || '2:3', wh = { '9:16': 9 / 16, '2:3': 2 / 3, '4:5': .8, '3:2': 1.5 }[r] || .8;
+  const its = Object.entries(it).map(([k, v]) => ({ key: k, h: dishHeight(k), dish: Q.dishes.includes(k), ...v })); fixStacking(its, wh); its.forEach(i => { it[i.key].y = i.y; });   // 平盤不能壓高碗
   return { it, focus: +(sl[0][1] + .08).toFixed(2), dof: .08 };
 }
 function job(props, pr) {

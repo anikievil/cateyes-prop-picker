@@ -250,6 +250,8 @@ function renderSide() {
   if (S.風格.length > 2) warns.push(`風格選了 ${S.風格.length} 個，最多 2 個，請取消幾個。`);
   if (!S.主角) warns.push('還沒寫主角菜色（第 ① 步），提示詞會不知道要放什麼。');
   lastWarns = warns.filter(w => w !== '還沒選桌面。' || !S.構圖 || +S.構圖 > 1);
+  if (S.版面) { const its = boardItems().filter(it => S.版面.it[it.key]).map(it => ({ key: it.key, label: it.label, h: dishHeight(it.label), dish: it.kind === 'dish', ...S.版面.it[it.key] }));
+    const bad = fixStacking(its.map(i => ({ ...i })), 1 / RATIO(S.比例)); if (bad.length) warns.push(`畫布上「${bad.map(k => its.find(i => i.key === k).label).join('、')}」被前面比較矮的東西壓到，實際拍不出來；把它往上移開，或按「套用範本位置」自動排。`); }
   const pk = picked.find(p => p.id === peek) || picked[picked.length - 1];
   $('#side').innerHTML = `<h2 style="font-size:17px">已選 ${picked.length} 樣</h2><p class="sub">${esc(tags) || '還沒選業態和風格。'}</p>
     ${pk ? `<div class="peek"><img src="img/${pk.id}.jpg" alt="${esc(pk.name)}" data-zoom="${pk.id}"><button class="zoom" data-zoom="${pk.id}" aria-label="放大看 ${esc(pk.name)}">${ZOOM}</button><p>${esc(pk.name)}<small style="color:var(--muted)">｜${esc(pk.size)}</small></p></div>` : ''}
@@ -294,17 +296,25 @@ function boardItems() {
     ...((S.版面 || {}).up || []).map(u => ({ key: u.key, kind: 'up', label: u.name, img: UP[u.key] }))];
 }
 function boardInit(force) {
-  const B = S.版面 = S.版面 || { it: {}, focus: .72, dof: .08, up: [] }, items = boardItems(), sl = SLOTS[S.空間];
-  const nd = items.filter(it => it.kind === 'dish').length; let d = 0, p = 0;
+  const B = S.版面 = S.版面 || { it: {}, focus: .72, dof: .08, up: [] }, items = boardItems(), sl = slotsFor(S.空間, (S.主角 || '').split(/[、,，]/)[0]);
+  const nd = items.filter(it => it.kind === 'dish').length; let d = 0, p = 0, added = false;
   items.forEach(it => {   // 計數一定要跑（已擺好的也算），新東西才不會疊在別人的位置上
     const isDish = it.kind === 'dish', k = isDish ? d++ : p++;
     if (B.it[it.key] && !force) return;
+    added = true;
     const s = sl && (isDish ? sl[Math.min(k, sl.length - 1)] : sl[nd + k]);
     if (s) B.it[it.key] = { x: s[0], y: s[1], w: isDish ? s[2] : Math.min(s[2], .22) };
     else if (isDish) B.it[it.key] = k === 0 ? { x: .5, y: .72, w: .42 } : { x: k % 2 ? .25 : .74, y: .42, w: .26 };
     else { const j = sl ? k - Math.max(0, sl.length - nd) : k; B.it[it.key] = { x: .12 + (j % 5) * .19, y: j < 5 ? .08 : .95, w: .14 }; }
   });
   if (sl && force) B.focus = sl[0][1] + .08;
+  if (force || added) stackFix();   // 套範本或新加東西才自動排；使用者自己拖的位置不動，只在右側提醒
+}
+// 器皿高度規則：平盤不能壓在高碗上；回傳被移動的東西名稱
+function stackFix() {
+  const B = S.版面, its = boardItems().filter(it => B.it[it.key]).map(it => ({ key: it.key, label: it.label, h: dishHeight(it.label), dish: it.kind === 'dish', ...B.it[it.key] }));
+  const moved = fixStacking(its, 1 / RATIO(S.比例)); its.forEach(it => { B.it[it.key].y = it.y; });
+  return moved.map(k => its.find(i => i.key === k).label);
 }
 function boardHtml() {
   boardInit(); const B = S.版面, r = RATIO(S.比例), wall = (pick('空間') || {}).wall || 0;
@@ -471,7 +481,7 @@ function boardPaint() {   // 只更新位置、模糊、對焦線，不重畫整
   const fl = $('#fl'), band = $('#band'); if (fl) fl.style.top = B.focus * 100 + '%'; if (band) Object.assign(band.style, { top: (B.focus - B.dof) * 100 + '%', height: B.dof * 200 + '%' });
 }
 document.addEventListener('click', e => {
-  if (e.target.id === 'bdTpl') { boardInit(true); renderPanel(); save(); }
+  if (e.target.id === 'bdTpl') { boardInit(true); renderPanel(); renderSide(); save(); }
   const sg = e.target.closest('[data-sug]');
   if (sg) { const id = sg.dataset.sug; S.props = S.props.includes(id) ? S.props.filter(x => x !== id) : [...S.props, id]; peek = S.props.includes(id) ? id : peek; $('#sugBox').innerHTML = sugHtml(); renderSide(); save(); }
   // 全部加入：飲料不自動加，讓使用者自己挑一杯

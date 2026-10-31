@@ -292,3 +292,29 @@ const SLOTS = {   // 空間範本實測位置（AI情境圖系統/空間範本.m
   '同款雙碗・動作對角線': [[.5, .7, .75], [.8, .45, .55], [.14, .31, .3], [.11, .63, .22], [.14, .93, .3], [.82, .3, .22]],
   '滿版套餐・四邊出血': [[.59, .68, .9], [.23, .42, .5], [.46, .18, .66], [.84, .4, .3], [.07, .77, .14], [.06, .21, .2]],
 };
+
+// 器皿高度（公分級距）：1＝平盤、2＝淺碗／小碟、3＝高碗／鍋／杯。排版用：前面的東西只能遮後面「不超過自己高度」的部分
+const DISH_HEIGHT = [[/湯|麵|飯|冬粉|鍋|杯|甕|罐/, 3], [/切盤|白肉|魚皮|時蔬|地瓜葉|高麗菜|豆芽|砧板|托盤|竹簾|價目牌|菜刀|蒜瓣|薑片|蔥段|海鹽|筷|湯匙|湯勺/, 1]];
+const dishHeight = name => (DISH_HEIGHT.find(([re]) => re.test(name)) || [0, 2])[1];
+// 把疊錯的東西移開：items＝[{key,x,y,w,h,dish}]（畫面比例；y＝中心；h＝高度級距；dish＝是菜）；wh＝畫面寬÷高（換算橢圓在 y 方向的高度）
+// 允許的遮擋：前矮後高 10%、同高 30%、前高後矮 不限。菜被壓到→後面的菜往上移；道具壓到菜→道具往下移（道具不能推菜）
+function fixStacking(items, wh = .8) {
+  const box = it => { const hh = it.w * .55 * wh / 2; return { top: it.y - hh, bot: it.y + hh, l: it.x - it.w / 2, r: it.x + it.w / 2 }; };
+  const moved = [];
+  for (let pass = 0; pass < 4; pass++) items.slice().sort((a, b) => b.y - a.y).forEach(front => items.forEach(back => {
+    if (back === front || back.y >= front.y) return;
+    const f = box(front), b = box(back); if (b.r <= f.l || b.l >= f.r) return;
+    const allow = back.h < front.h ? 1 : back.h > front.h ? .1 : .3, over = b.bot - f.top, lim = allow * (b.bot - b.top);
+    if (over <= lim + .005) return;
+    const mv = (!front.dish && back.dish) ? front : back;   // 道具擋到菜：移道具
+    mv.y = +Math.min(.97, Math.max(.03, mv === front ? mv.y + (over - lim) : mv.y - (over - lim))).toFixed(3);
+    if (!moved.includes(mv.key)) moved.push(mv.key);
+  }));
+  return moved;
+}
+// 主菜是平盤時的範本變體：滿版套餐原本是「大鍋在前壓住後排」，平盤壓不住高碗，改成前一後二、不重疊
+const SLOTS_FLAT = {
+  '滿版套餐・四邊出血': [[.5, .72, .78], [.25, .5, .42], [.74, .49, .4], [.1, .8, .14], [.9, .8, .14], [.5, .3, .18]],
+  '同款雙碗・動作對角線': [[.45, .72, .7], [.78, .45, .46], [.14, .35, .3], [.11, .66, .22], [.14, .95, .3], [.82, .3, .22]],
+};
+const slotsFor = (space, mainDish) => (dishHeight(mainDish || '') === 1 && SLOTS_FLAT[space]) || SLOTS[space];
