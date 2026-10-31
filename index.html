@@ -76,6 +76,24 @@ dialog#zoomDlg p{margin:0;padding:10px 14px;font-size:14px}
 .pset span{flex:1}.pset button{border:0;background:none;cursor:pointer;color:var(--ink);font-size:13px;padding:2px 4px}
 .pcli{font-size:13px;font-weight:700;margin:10px 0 2px}
 input.main{width:100%;max-width:520px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:15px}
+.board{position:relative;width:min(100%,420px);background:#d9c3a3;border-radius:6px;overflow:hidden;touch-action:none;user-select:none;margin:6px 0 4px;box-shadow:inset 0 0 0 1px #0002}
+.board .wall{position:absolute;left:0;right:0;top:0;background:#cfcac3}
+.board .it{position:absolute;transform:translate(-50%,-50%);cursor:grab;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;text-align:center;line-height:1.2}
+.board .it .bg{position:absolute;inset:0;pointer-events:none}
+.board .it.dish .bg{border-radius:50%;background:#1d1b19e6;box-shadow:0 3px 6px #0004}
+.board .it.prop .bg,.board .it.up .bg{border-radius:8px;background:#fff center/cover no-repeat;box-shadow:0 2px 5px #0003}
+.board .it.up img{width:100%;height:100%;object-fit:contain}
+.board .it span{position:relative}
+.board .it span{background:#0008;border-radius:4px;padding:1px 4px;pointer-events:none;max-width:95%}
+.board .it.on{outline:2px solid #c9a46a;z-index:3}
+.board .rs{position:absolute;right:-6px;bottom:-6px;width:16px;height:16px;border-radius:50%;background:#c9a46a;border:2px solid #fff;cursor:nwse-resize}
+.board .band{position:absolute;left:0;right:0;background:#ffffff26;border-top:1px dashed #fff9;border-bottom:1px dashed #fff9;pointer-events:none}
+.board .fl{position:absolute;left:0;right:0;height:0;border-top:2px solid #e8573f;cursor:ns-resize;z-index:4}
+.board .fl::before{content:'';position:absolute;left:0;right:0;top:-10px;height:20px}
+.board .fl b{position:absolute;right:4px;top:-20px;font-size:11px;background:#e8573f;color:#fff;padding:1px 6px;border-radius:4px}
+.bdtools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0;font-size:13px}
+.bdtools button,.bdtools label.btn{border:1px solid var(--ink);background:#fff;border-radius:999px;padding:6px 12px;cursor:pointer;font-size:13px}
+.bdtools input[type=range]{width:160px;accent-color:#e8573f}
 label.tog{font-size:13px;color:var(--muted);display:inline-flex;gap:6px;align-items:center;margin-bottom:10px}
 /* 清單頁 */
 #sheet{max-width:820px;margin:0 auto;padding:28px 20px 80px;background:#fff}
@@ -112,7 +130,7 @@ const STEPS = ['業態・風格', '角度・比例', '光調・故事', '空間�
 // 比例直接當生圖的 aspect_ratio 用
 const RATIOS = [{ name: '4:5', note: '直式・IG 貼文' }, { name: '2:3', note: '直式・黑本常用' }, { name: '9:16', note: '直式・限動、Reels' }, { name: '1:1', note: '方形' }, { name: '3:2', note: '橫式・官網、菜單' }, { name: '16:9', note: '橫幅・封面' }];
 const ratioWord = r => ({ '4:5': '直式 4:5', '2:3': '直式 2:3', '9:16': '直式 9:16', '1:1': '方形 1:1', '3:2': '橫式 3:2', '16:9': '橫式 16:9' }[r] || '直式');
-const blank = () => ({ 業態: '', 風格: [], 角度: '', 比例: '', 光調: '', 套餐: '', 主角: '', 空間: '', 構圖: '', 位置: '', 留白: '', 層次: '', 光線: '', 故事: '', props: [] });
+const blank = () => ({ 業態: '', 風格: [], 角度: '', 比例: '', 光調: '', 套餐: '', 主角: '', 空間: '', 版面: null, 構圖: '', 位置: '', 留白: '', 層次: '', 光線: '', 故事: '', props: [] });
 let S = blank(), peek = '', lastWarns = [], step = 0, showAll = false, query = '';
 try { S = { ...S, ...JSON.parse(localStorage.getItem('propPick') || '{}') } } catch (e) {}
 const save = () => { try { localStorage.setItem('propPick', JSON.stringify(S)) } catch (e) {} };
@@ -165,6 +183,7 @@ function renderPanel() {
     const i = Math.max(0, CHOICES.構圖.findIndex(l => l.name === S.構圖));
     h = `<h2>整體視角與空間</h2><p class="sub">選一個空間範本，比例、相機角度、東西怎麼擺都照它做（選了會自動改成 2:3，並帶入建議的構圖等級，可再調）。示意圖：黑＝主角、灰＝副菜、金＝原料或容器、線＝湯匙。</p>
       <div class="spc">${CHOICES.空間.map(t => `<button class="${S.空間 === t.name ? 'on' : ''}" data-k="空間" data-v="${esc(t.name)}">${spaceSvg(t)}<span><b>${S.空間 === t.name ? '✓ ' : ''}${esc(t.name)}</b><small>${esc(t.note)}</small></span></button>`).join('')}</div>
+      <h2 style="margin-top:26px">排版畫布（拖拉擺位置）</h2>${boardHtml()}
       <h2 style="margin-top:26px">構圖等級</h2><p class="sub">畫面要放多少東西？等級越高越熱鬧；一主二副選 6，多道菜併桌選 7。圖示：黑＝主角、灰＝副菜、紅＝道具、虛線框＝放字。</p>
       <div class="lv"><input type="range" id="lv" min="0" max="${CHOICES.構圖.length - 1}" step="1" value="${i}" aria-label="構圖等級">
       <div class="lvmarks">${CHOICES.構圖.map((l, j) => `<button data-lv="${j}"><b>${l.name}</b><small>${l.note}</small></button>`).join('')}</div>
@@ -235,6 +254,51 @@ function renderNav() {
 const render = () => { renderNav(); renderPanel(); renderSide(); save(); };
 
 // 組模擬圖提示詞：照 03_套餐提示詞 的寫法與共用結尾
+// 排版畫布：主角菜、選的道具、使用者上傳的照片都能拖拉、縮放；紅線＝對焦平面，虛線帶＝清楚範圍（景深）
+// 版面存 S.版面 = { it: {key: {x, y, w}}, focus, dof, up: [{key, name}] }；座標是畫面比例（中心點、寬度）
+const UP = {};   // 上傳照片的暫存網址（不存進瀏覽器，重新整理後只剩檔名）
+const RATIO = r => ({ '4:5': 1.25, '2:3': 1.5, '9:16': 16 / 9, '1:1': 1, '3:2': 2 / 3, '16:9': 9 / 16 }[r] || 1.25);
+const SLOTS = {   // 空間範本實測位置（AI情境圖系統/空間範本.md）：前幾格給菜，其餘給道具
+  '前大後小・牆面留白': [[.5, .78, .96], [.26, .45, .34], [.125, .53, .27], [.78, .47, .4]],
+  '同款雙碗・動作對角線': [[.5, .7, .75], [.8, .45, .55], [.14, .31, .3], [.11, .63, .22], [.14, .93, .3], [.82, .3, .22]],
+  '滿版套餐・四邊出血': [[.59, .68, .9], [.23, .42, .5], [.46, .18, .66], [.84, .4, .3], [.07, .77, .14], [.06, .21, .2]],
+};
+function boardItems() {
+  const dishes = (S.主角 || '主角').split(/[、,，]/).map(x => x.trim()).filter(Boolean);
+  const props = PROPS.filter(p => S.props.includes(p.id) && !['桌面', '布料', '後景'].includes(p.cat));
+  return [...dishes.map((n, i) => ({ key: 'd' + i, kind: 'dish', label: n })),
+    ...props.map(p => ({ key: 'p:' + p.id, kind: 'prop', label: p.name, img: `img/${p.id}.jpg` })),
+    ...((S.版面 || {}).up || []).map(u => ({ key: u.key, kind: 'up', label: u.name, img: UP[u.key] }))];
+}
+function boardInit(force) {
+  const B = S.版面 = S.版面 || { it: {}, focus: .72, dof: .08, up: [] }, items = boardItems(), sl = SLOTS[S.空間];
+  const nd = items.filter(it => it.kind === 'dish').length; let d = 0, p = 0;
+  items.forEach(it => {   // 計數一定要跑（已擺好的也算），新東西才不會疊在別人的位置上
+    const isDish = it.kind === 'dish', k = isDish ? d++ : p++;
+    if (B.it[it.key] && !force) return;
+    const s = sl && (isDish ? sl[Math.min(k, sl.length - 1)] : sl[nd + k]);
+    if (s) B.it[it.key] = { x: s[0], y: s[1], w: isDish ? s[2] : Math.min(s[2], .22) };
+    else if (isDish) B.it[it.key] = k === 0 ? { x: .5, y: .72, w: .42 } : { x: k % 2 ? .25 : .74, y: .42, w: .26 };
+    else { const j = sl ? k - Math.max(0, sl.length - nd) : k; B.it[it.key] = { x: .12 + (j % 5) * .19, y: j < 5 ? .08 : .95, w: .14 }; }
+  });
+  if (sl && force) B.focus = sl[0][1] + .08;
+}
+function boardHtml() {
+  boardInit(); const B = S.版面, r = RATIO(S.比例), wall = (pick('空間') || {}).wall || 0;
+  const blur = y => Math.min(6, Math.max(0, Math.abs(y - B.focus) - B.dof) * 24);
+  return `<div class="board" id="board" style="aspect-ratio:1/${r}">${wall ? `<div class="wall" style="height:${wall * 100}%"></div>` : ''}
+    <div class="band" id="band" style="top:${(B.focus - B.dof) * 100}%;height:${B.dof * 200}%"></div>
+    ${boardItems().map(it => { const v = B.it[it.key]; return `<div class="it ${it.kind}" data-it="${esc(it.key)}" style="left:${v.x * 100}%;top:${v.y * 100}%;width:${v.w * 100}%;aspect-ratio:${it.kind === 'dish' ? '1/.55' : '1'}"><i class="bg" style="filter:blur(${blur(v.y)}px);${it.kind === 'prop' ? `background-image:url('${it.img}')` : ''}">${it.kind === 'up' && it.img ? `<img src="${it.img}" alt="">` : ''}</i><span>${esc(it.label)}</span><i class="rs" data-rs="${esc(it.key)}"></i></div>`; }).join('')}
+    <div class="fl" id="fl" style="top:${B.focus * 100}%"><b>對焦</b></div></div>
+    <div class="bdtools"><span>景深（清楚範圍）</span><input type="range" id="dof" min="0.02" max="0.35" step="0.01" value="${B.dof}"><span id="dofv">±${Math.round(B.dof * 100)}%</span>
+      <button id="bdTpl">${S.空間 ? '套用範本位置' : '重新排列'}</button><label class="btn">＋ 加我的照片<input type="file" id="bdUp" accept="image/*" multiple hidden></label></div>
+    <p class="sub">拖曳移動、拖右下角金色圓點縮放；紅線＝對焦平面（可上下拖），虛線帶內清楚、帶外越遠越糊。道具會跟著你選的道具出現；自己的照片按「加我的照片」，生圖時要在對話附上同一張。</p>`;
+}
+function boardText() {   // 寫進提示詞：每樣東西在哪、多大，對焦在哪
+  const B = S.版面; if (!B) return '';
+  const pos = boardItems().map(it => { const v = B.it[it.key]; return v && `${it.kind === 'dish' ? (it.key === 'd0' ? '主菜' : '副菜') : it.kind === 'up' ? '指定物件' : '道具'}「${it.label}」中心在畫面左右 ${Math.round(v.x * 100)}%、上下 ${Math.round(v.y * 100)}%，寬約畫面 ${Math.round(v.w * 100)}%`; }).filter(Boolean);
+  return pos.length ? `版面位置：${pos.join('；')}。超出畫面的部分就讓它被裁切。對焦在畫面上下 ${Math.round(B.focus * 100)}% 那一條，前後 ${Math.round(B.dof * 100)}% 內清楚，離這條越遠越模糊。` : '';
+}
 function buildPrompt(picked) {
   const by = c => picked.filter(p => p.cat === c).map(p => p.name).join('、');
   const a = angle(), light = CHOICES.光線.find(l => l.name === S.光線), story = CHOICES.故事.find(s => s.name === S.故事);
@@ -248,6 +312,7 @@ function buildPrompt(picked) {
   if (set && set.prompt) parts.push(`${set.prompt}。`);
   if (tone) parts.push(`${tone.prompt}。`);
   const sp = pick('空間'); if (sp) parts.push(`${sp.prompt}。`);
+  const bt = boardText(); if (bt) parts.push(bt);
   if (level()) parts.push(`構圖：${level().prompt}。`);
   ['位置', '留白', '層次'].map(pick).filter(o => o && o.prompt).forEach(o => parts.push(`${o.prompt}。`));
   if (light) parts.push(`光線：${light.prompt}。`);
@@ -266,13 +331,15 @@ function buildJob(subj) {
     `主角菜色：${S.主角 || '未填'}`,
     `業態／風格：${S.業態 || '未選'}｜${S.風格.join('＋') || '不限'}`,
     `比例：${S.比例 || '未選（預設 4:5）'}`,
+    S.版面 ? `版面座標（給合成工具，x/y＝中心、w＝寬，畫面比例）：${JSON.stringify(Object.fromEntries(boardItems().map(it => [it.label, S.版面.it[it.key]]).filter(e => e[1])))}｜focus=${S.版面.focus.toFixed(2)} dof=${S.版面.dof.toFixed(2)}` : '',
+    ((S.版面 || {}).up || []).length ? `另附照片（請在對話附上）：${S.版面.up.map(u => u.name).join('、')}` : '',
     `構圖細節：${[S.空間 && '空間範本「' + S.空間 + '」', S.位置, S.留白, S.層次].filter(Boolean).join('｜') || '未選'}`,
     `光調／組合／構圖：${[S.光調, S.套餐, S.構圖 && '等級 ' + S.構圖].filter(Boolean).join('｜') || '未選'}`,
     `角度／光線／故事：${[S.角度, S.光線, S.故事].filter(Boolean).join('｜') || '未選'}`,
     `道具（${picked.length} 樣）：${picked.map(p => p.name).join('、') || '無'}`,
     '', '提示詞：', $('#prompt').value, '',
     '請照作業規則：先報價等我回 k；' + (subj ? '出圖後做三道鎖對照驗收頁；' : '') + '出圖要過鐵則 11 角度檢查與基準 19 條（作業規則第九節）。'];
-  return lines.join('\n');
+  return lines.filter(l => l !== '').join('\n');
 }
 
 function renderSheet() {
@@ -331,7 +398,7 @@ document.addEventListener('click', e => {
     if (k === '風格' && !S[k].includes(v) && S[k].length >= 2) { alert('風格最多選 2 個，先取消一個再選。'); return; }
     if (t.dataset.m) S[k] = S[k].includes(v) ? S[k].filter(x => x !== v) : [...S[k], v];
     else S[k] = S[k] === v ? '' : v;
-    if (k === '空間' && S.空間) { const tp = CHOICES.空間.find(x => x.name === S.空間); S.比例 = tp.ratio; if (!S.構圖) S.構圖 = tp.level; }
+    if (k === '空間' && S.空間) { const tp = CHOICES.空間.find(x => x.name === S.空間); S.比例 = tp.ratio; if (!S.構圖) S.構圖 = tp.level; boardInit(true); }
   } else if (t.dataset.id) { const id = t.dataset.id; S.props = S.props.includes(id) ? S.props.filter(x => x !== id) : [...S.props, id]; peek = S.props.includes(id) ? id : ''; }
   else if (t.dataset.step) { step = +t.dataset.step; $('#app').hidden = false; $('#sheetWrap').hidden = true; }
   else if (t.dataset.rm) S.props = S.props.filter(x => x !== t.dataset.rm);
@@ -355,7 +422,39 @@ document.addEventListener('change', e => {
   if (e.target.id === 'subjectFile' && e.target.files[0]) { const im = $('#subjectPreview'); im.src = URL.createObjectURL(e.target.files[0]); im.hidden = false; }
 });
 // 拉霸：拖動時只更新說明與右側，不重畫整頁（重畫會中斷拖動）
+// 畫布拖拉：pointer 事件（滑鼠、觸控都能用）；拖動中只改樣式，放開才存檔、更新右側
+let drag = null;
+document.addEventListener('pointerdown', e => {
+  const bd = e.target.closest('#board'); if (!bd) return;
+  const rect = bd.getBoundingClientRect(), B = S.版面;
+  if (e.target.dataset.rs) drag = { mode: 'rs', key: e.target.dataset.rs, rect, x0: e.clientX, w0: B.it[e.target.dataset.rs].w };
+  else if (e.target.closest('#fl')) drag = { mode: 'fl', rect };
+  else if (e.target.closest('[data-it]')) { const k = e.target.closest('[data-it]').dataset.it; drag = { mode: 'mv', key: k, rect, dx: e.clientX - rect.left - B.it[k].x * rect.width, dy: e.clientY - rect.top - B.it[k].y * rect.height }; document.querySelectorAll('.board .it.on').forEach(x => x.classList.remove('on')); e.target.closest('[data-it]').classList.add('on'); }
+  if (drag) { e.preventDefault(); bd.setPointerCapture(e.pointerId); }
+});
+document.addEventListener('pointermove', e => {
+  if (!drag) return; const B = S.版面, r = drag.rect, cl = (v, a, b) => Math.min(b, Math.max(a, v));
+  if (drag.mode === 'mv') { const v = B.it[drag.key]; v.x = cl((e.clientX - r.left - drag.dx) / r.width, -.2, 1.2); v.y = cl((e.clientY - r.top - drag.dy) / r.height, -.2, 1.2); }
+  if (drag.mode === 'rs') B.it[drag.key].w = cl(drag.w0 + 2 * (e.clientX - drag.x0) / r.width, .05, 1.4);
+  if (drag.mode === 'fl') B.focus = cl((e.clientY - r.top) / r.height, 0, 1);
+  boardPaint();
+});
+document.addEventListener('pointerup', () => { if (drag) { drag = null; save(); renderSide(); } });
+function boardPaint() {   // 只更新位置、模糊、對焦線，不重畫整頁
+  const B = S.版面, blur = y => Math.min(6, Math.max(0, Math.abs(y - B.focus) - B.dof) * 24);
+  document.querySelectorAll('.board [data-it]').forEach(el => { const v = B.it[el.dataset.it]; if (!v) return; Object.assign(el.style, { left: v.x * 100 + '%', top: v.y * 100 + '%', width: v.w * 100 + '%' }); el.querySelector('.bg').style.filter = `blur(${blur(v.y)}px)`; });
+  const fl = $('#fl'), band = $('#band'); if (fl) fl.style.top = B.focus * 100 + '%'; if (band) Object.assign(band.style, { top: (B.focus - B.dof) * 100 + '%', height: B.dof * 200 + '%' });
+}
+document.addEventListener('click', e => {
+  if (e.target.id === 'bdTpl') { boardInit(true); renderPanel(); save(); }
+});
+document.addEventListener('change', e => {
+  if (e.target.id !== 'bdUp') return;
+  const B = S.版面; [...e.target.files].forEach(f => { const key = 'u' + Date.now() + Math.random().toString(36).slice(2, 6); UP[key] = URL.createObjectURL(f); B.up.push({ key, name: f.name }); });
+  boardInit(); renderPanel(); renderSide(); save();
+});
 document.addEventListener('input', e => {
+  if (e.target.id === 'dof') { S.版面.dof = +e.target.value; $('#dofv').textContent = '±' + Math.round(S.版面.dof * 100) + '%'; boardPaint(); save(); return; }
   if (e.target.id === 'mainIn') { S.主角 = e.target.value.trim(); renderSide(); save(); return; }
   if (e.target.id === 'pvClient') { lastClient = e.target.value.trim(); return; }
   if (e.target.id !== 'lv') return;
