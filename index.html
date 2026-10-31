@@ -125,6 +125,7 @@ textarea{width:100%;min-height:150px;font:14px/1.6 inherit;padding:10px;border:1
   <b>貓眼<span>道具選物</span></b>
   <nav id="nav"></nav>
   <input id="search" placeholder="搜尋：亞麻、搪瓷、黃銅…">
+  <a href="快速.html" style="color:#ddd;font-size:13px;text-decoration:none;border:1px solid #555;border-radius:999px;padding:7px 12px;white-space:nowrap">快速版</a>
   <button class="done" id="finish">完成，出清單</button>
 </header>
 <dialog id="zoomDlg"><img alt=""><p></p></dialog>
@@ -271,11 +272,6 @@ const render = () => { renderNav(); renderPanel(); renderSide(); save(); };
 // 版面存 S.版面 = { it: {key: {x, y, w}}, focus, dof, up: [{key, name}] }；座標是畫面比例（中心點、寬度）
 const UP = {};   // 上傳照片的暫存網址（不存進瀏覽器，重新整理後只剩檔名）
 const RATIO = r => ({ '4:5': 1.25, '2:3': 1.5, '9:16': 16 / 9, '1:1': 1, '3:2': 2 / 3, '16:9': 9 / 16 }[r] || 1.25);
-const SLOTS = {   // 空間範本實測位置（AI情境圖系統/空間範本.md）：前幾格給菜，其餘給道具
-  '前大後小・牆面留白': [[.5, .78, .96], [.26, .45, .34], [.125, .53, .27], [.78, .47, .4]],
-  '同款雙碗・動作對角線': [[.5, .7, .75], [.8, .45, .55], [.14, .31, .3], [.11, .63, .22], [.14, .93, .3], [.82, .3, .22]],
-  '滿版套餐・四邊出血': [[.59, .68, .9], [.23, .42, .5], [.46, .18, .66], [.84, .4, .3], [.07, .77, .14], [.06, .21, .2]],
-};
 // 依主角菜色建議配件：比對 DISH_PROPS 關鍵字，再加店家情境道具；點一下加入／取消
 function suggestions() {
   const dishes = (S.主角 || '').split(/[、,，\s]+/).filter(Boolean); if (!dishes.length) return [];

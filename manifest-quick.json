@@ -1,0 +1,33 @@
+{
+  "id": "./快速.html",
+  "name": "貓眼快速選物",
+  "short_name": "快速選物",
+  "description": "四步選完直接出工作單",
+  "lang": "zh-Hant",
+  "start_url": "快速.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f4f0",
+  "theme_color": "#1d1b19",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
