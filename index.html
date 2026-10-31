@@ -144,6 +144,7 @@ const ratioWord = r => ({ '4:5': '直式 4:5', '2:3': '直式 2:3', '9:16': '直
 const blank = () => ({ 業態: '', 風格: [], 角度: '', 比例: '', 光調: '', 套餐: '', 主角: '', 空間: '', 版面: null, 構圖: '', 位置: '', 留白: '', 層次: '', 光線: '', 故事: '', props: [] });
 let S = blank(), peek = '', lastWarns = [], step = 0, showAll = false, query = '';
 try { S = { ...S, ...JSON.parse(localStorage.getItem('propPick') || '{}') } } catch (e) {}
+if (S.空間 && !CHOICES.空間.some(t => t.name === S.空間)) { S.空間 = ''; S.版面 = null; }   // 舊版範本名稱作廢
 const save = () => { try { localStorage.setItem('propPick', JSON.stringify(S)) } catch (e) {} };
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -192,7 +193,8 @@ function renderPanel() {
   else if (step === 2) h = `<h2>光調・故事</h2><p class="sub">光決定情緒；故事時刻會在模擬圖加上生活痕跡。</p><h3>光調（照兩頁光線食譜）</h3><p class="sub">亮調＝明亮清爽、適合麵、青菜；暗調＝暖棕有氣勢、適合切盤、湯、滷味。選了光調，下面的光線可以不選。</p>${chips('光調', CHOICES.光調)}<h3>菜色組合</h3><p class="sub">只拍一道容易單調；一主二副＝主菜在前、兩道副菜在後，畫面最豐富（基準第 17 條）。</p>${chips('套餐', CHOICES.套餐)}<h3>光線</h3>${chips('光線', CHOICES.光線)}<h3>故事時刻</h3>${chips('故事', CHOICES.故事)}`;
   else if (name === '空間・構圖') {
     const i = Math.max(0, CHOICES.構圖.findIndex(l => l.name === S.構圖));
-    h = `<h2>整體視角與空間</h2><p class="sub">選一個空間範本，比例、相機角度、東西怎麼擺都照它做（選了會自動改成 2:3，並帶入建議的構圖等級，可再調）。示意圖：黑＝主角、灰＝副菜、金＝原料或容器、線＝湯匙。</p>
+    const sugSp = S.主角 ? spaceFor(S.主角.split(/[、,，]/)[0]) : '';
+    h = `<h2>整體視角與空間</h2><p class="sub">四套版型從黑本實拍照量出來的（角度、位置、哪些被畫面邊裁切）。選了會自動改成 2:3、帶入建議的構圖等級，可再調。${sugSp ? `依主菜建議：<b>${esc(sugSp)}</b>。` : ''}示意圖：黑＝主角、灰＝副菜、金＝容器或竹墊、線＝筷子。</p>
       <div class="spc">${CHOICES.空間.map(t => `<button class="${S.空間 === t.name ? 'on' : ''}" data-k="空間" data-v="${esc(t.name)}">${spaceSvg(t)}<span><b>${S.空間 === t.name ? '✓ ' : ''}${esc(t.name)}</b><small>${esc(t.note)}</small></span></button>`).join('')}</div>
       <h2 style="margin-top:26px">排版畫布（拖拉擺位置）</h2>${boardHtml()}
       <h2 style="margin-top:26px">構圖等級</h2><p class="sub">畫面要放多少東西？等級越高越熱鬧；一主二副選 6，多道菜併桌選 7。圖示：黑＝主角、灰＝副菜、紅＝道具、虛線框＝放字。</p>
@@ -238,7 +240,7 @@ function renderSide() {
   if (angle() && !angle().bg && picked.some(p => p.cat === '後景')) warns.push('高角度看不到後景，後景會被忽略。');
   const small = picked.filter(p => ['容器', '餐具', '軟裝', '墊高'].includes(p.cat)).length, lv = level();
   if (lv && small > lv.max) warns.push(`構圖等級 ${lv.name} 建議小道具最多 ${lv.max} 樣，你選了 ${small} 樣。`);
-  if (lv && S.套餐 === '一主二副' && +lv.name < 6) warns.push('一主二副對應構圖等級 6（或 7、8），現在的等級只放得下一道菜。');
+  if (!S.空間 && lv && S.套餐 === '一主二副' && +lv.name < 6) warns.push('一主二副對應構圖等級 6（或 7、8），現在的等級只放得下一道菜。');
   if (S.留白 && S.留白 !== '不留白' && S.位置 === '出血大特寫') warns.push('出血大特寫和留白放字互相衝突，建議擇一。');
   if (lv && lv.name === '8' && S.留白 && S.留白 !== '不留白') warns.push('整桌滿版會鋪滿畫面，留白放字建議改用等級 6 或 7。');
   if (picked.filter(p => /啤酒|茶杯|汽水|飲料|咖啡杯/.test(p.name)).length > 1) warns.push('飲料只能放一杯（基準第 7 條），請留一樣就好。');
@@ -296,18 +298,19 @@ function boardItems() {
     ...((S.版面 || {}).up || []).map(u => ({ key: u.key, kind: 'up', label: u.name, img: UP[u.key] }))];
 }
 function boardInit(force) {
-  const B = S.版面 = S.版面 || { it: {}, focus: .72, dof: .08, up: [] }, items = boardItems(), sl = slotsFor(S.空間, (S.主角 || '').split(/[、,，]/)[0]);
-  const nd = items.filter(it => it.kind === 'dish').length; let d = 0, p = 0, added = false;
-  items.forEach(it => {   // 計數一定要跑（已擺好的也算），新東西才不會疊在別人的位置上
-    const isDish = it.kind === 'dish', k = isDish ? d++ : p++;
+  const B = S.版面 = S.版面 || { it: {}, focus: .72, dof: .08, up: [] }, items = boardItems();
+  const dishes = items.filter(it => it.kind === 'dish'), others = items.filter(it => it.kind !== 'dish');
+  const got = assignSlots(S.空間, dishes[0] && dishes[0].label, dishes.map(d => d.label), others.map(o => o.key));   // 道具用 key 分配（名稱可能重複）
+  let added = false, spare = 0, d = 0;
+  items.forEach(it => {
     if (B.it[it.key] && !force) return;
     added = true;
-    const s = sl && (isDish ? sl[Math.min(k, sl.length - 1)] : sl[nd + k]);
-    if (s) B.it[it.key] = { x: s[0], y: s[1], w: isDish ? s[2] : Math.min(s[2], .22) };
-    else if (isDish) B.it[it.key] = k === 0 ? { x: .5, y: .72, w: .42 } : { x: k % 2 ? .25 : .74, y: .42, w: .26 };
-    else { const j = sl ? k - Math.max(0, sl.length - nd) : k; B.it[it.key] = { x: .12 + (j % 5) * .19, y: j < 5 ? .08 : .95, w: .14 }; }
+    const s = got[it.kind === 'dish' ? it.label : it.key];
+    if (s) B.it[it.key] = { ...s };
+    else if (it.kind === 'dish') { B.it[it.key] = d === 0 ? { x: .5, y: .72, w: .42 } : { x: d % 2 ? .25 : .74, y: .42, w: .26 }; d++; }
+    else { B.it[it.key] = { x: .12 + (spare % 5) * .19, y: spare < 5 ? .08 : .95, w: .14 }; spare++; }
   });
-  if (sl && force) B.focus = sl[0][1] + .08;
+  const sl = SLOTS[S.空間]; if (sl && force) B.focus = sl[0][1] + .08;
   if (force || added) stackFix();   // 套範本或新加東西才自動排；使用者自己拖的位置不動，只在右側提醒
 }
 // 器皿高度規則：平盤不能壓在高碗上；回傳被移動的東西名稱
@@ -367,7 +370,7 @@ function buildJob(subj) {
     S.版面 ? `版面座標（給合成工具，x/y＝中心、w＝寬，畫面比例）：${JSON.stringify(Object.fromEntries(boardItems().map(it => [it.label, S.版面.it[it.key]]).filter(e => e[1])))}｜focus=${S.版面.focus.toFixed(2)} dof=${S.版面.dof.toFixed(2)}` : '',
     ((S.版面 || {}).up || []).length ? `另附照片（請在對話附上）：${S.版面.up.map(u => u.name).join('、')}` : '',
     `構圖細節：${[S.空間 && '空間範本「' + S.空間 + '」', S.位置, S.留白, S.層次].filter(Boolean).join('｜') || '未選'}`,
-    `光調／組合／構圖：${[S.光調, S.套餐, S.構圖 && '等級 ' + S.構圖].filter(Boolean).join('｜') || '未選'}`,
+    `光調／組合／構圖：${[S.光調, S.套餐, S.構圖 && '等級 ' + S.構圖, pick('空間') && '相機約 ' + pick('空間').angle + '°（去背圖要配 ±5°）'].filter(Boolean).join('｜') || '未選'}`,
     `角度／光線／故事：${[S.角度, S.光線, S.故事].filter(Boolean).join('｜') || '未選'}`,
     `道具（${picked.length} 樣）：${picked.map(p => p.name).join('、') || '無'}`,
     '', '提示詞：', $('#prompt').value, '',
