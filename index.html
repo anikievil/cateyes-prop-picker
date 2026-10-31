@@ -60,6 +60,9 @@ dialog#zoomDlg p{margin:0;padding:10px 14px;font-size:14px}
 .lvmarks{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:2px}
 .lvmarks button{border:0;background:none;cursor:pointer;color:inherit;font-size:13px;padding:4px;text-align:center}
 .lvmarks b{display:block;font-size:20px;color:var(--ink)}
+.lvmarks small{display:block;font-size:11px;line-height:1.3}
+.lvinfo{display:flex;gap:14px;align-items:flex-start}.lvinfo svg{flex:none;width:96px;height:120px}
+@media (max-width:760px){.lvmarks small{display:none}}
 .lvinfo{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
 label.tog{font-size:13px;color:var(--muted);display:inline-flex;gap:6px;align-items:center;margin-bottom:10px}
 /* 清單頁 */
@@ -97,7 +100,7 @@ const STEPS = ['業態・風格', '角度・比例', '光調・故事', '構圖�
 // 比例直接當生圖的 aspect_ratio 用
 const RATIOS = [{ name: '4:5', note: '直式・IG 貼文' }, { name: '9:16', note: '直式・限動、Reels' }, { name: '1:1', note: '方形' }, { name: '3:2', note: '橫式・官網、菜單' }, { name: '16:9', note: '橫幅・封面' }];
 const ratioWord = r => ({ '4:5': '直式 4:5', '9:16': '直式 9:16', '1:1': '方形 1:1', '3:2': '橫式 3:2', '16:9': '橫式 16:9' }[r] || '直式');
-const blank = () => ({ 業態: '', 風格: [], 角度: '', 比例: '', 光調: '', 套餐: '', 構圖: '', 光線: '', 故事: '', props: [] });
+const blank = () => ({ 業態: '', 風格: [], 角度: '', 比例: '', 光調: '', 套餐: '', 構圖: '', 位置: '', 留白: '', 層次: '', 光線: '', 故事: '', props: [] });
 let S = blank(), peek = '', step = 0, showAll = false, query = '';
 try { S = { ...S, ...JSON.parse(localStorage.getItem('propPick') || '{}') } } catch (e) {}
 const save = () => { try { localStorage.setItem('propPick', JSON.stringify(S)) } catch (e) {} };
@@ -107,7 +110,21 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const CAT_COLOR = { 桌面: '#8b6b4a', 布料: '#c9a46a', 後景: '#7a8fa3', 容器: '#6f9a7a', 餐具: '#9a8f86', 軟裝: '#c27b6b', 墊高: '#8f7aa8' };
 const ZOOM = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
 const level = () => CHOICES.構圖.find(l => l.name === S.構圖);
-const lvInfo = () => { const l = level(); return l ? `<b>等級 ${l.name}｜${l.note}</b><p class="sub" style="margin:6px 0 0">${l.prompt}。${l.max < 99 ? `小道具（容器、餐具、軟裝、墊高）建議最多 ${l.max} 樣。` : ''}</p>` : '<b>還沒選</b><p class="sub" style="margin:6px 0 0">拉動上面的拉霸，或點數字。</p>'; };
+const lvInfo = () => { const l = level(); return diagram() + '<div>' + (l ? `<b>等級 ${l.name}｜${l.note}</b><p class="sub" style="margin:6px 0 0">${l.prompt}。${l.max < 99 ? `小道具（容器、餐具、軟裝、墊高）建議最多 ${l.max} 樣。` : ''}</p>` : '<b>還沒選</b><p class="sub" style="margin:6px 0 0">拉動上面的拉霸，或點數字。</p>') + '</div>'; };
+const pick = k => CHOICES[k].find(o => o.name === S[k]);
+// 示意圖：直式框裡畫留白區、前景、主角（大橢圓）、副菜（中橢圓）、道具（小圓），跟著等級、位置、留白、層次即時變
+function diagram() {
+  const l = level() || CHOICES.構圖[0], pos = pick('位置') || CHOICES.位置[1], ws = pick('留白') || {}, ly = pick('層次') || {};
+  let [ax, ay, aw, ah] = [0, 0, 80, 100]; const side = ws.side;
+  if (side === 'top') [ay, ah] = [32, 68]; if (side === 'bottom') ah = 68; if (side === 'left') [ax, aw] = [27, 53]; if (side === 'right') aw = 53;
+  const cx = ax + aw * pos.x, cy = ay + ah * pos.y, r = (pos.big ? 34 : l.d > 1 ? 15 : 20) * (aw < 80 ? 0.85 : 1);
+  let g = side ? `<rect x="${side === 'right' ? 53 : 0}" y="${side === 'bottom' ? 68 : 0}" width="${side === 'left' || side === 'right' ? 27 : 80}" height="${side === 'top' || side === 'bottom' ? 32 : 100}" fill="#fff" stroke="#c9a46a" stroke-dasharray="3 2"/><text x="${side === 'left' ? 13.5 : side === 'right' ? 66.5 : 40}" y="${side === 'top' ? 19 : side === 'bottom' ? 87 : 54}" font-size="10" text-anchor="middle" fill="#c9a46a">字</text>` : '';
+  for (let i = 1; i < l.d; i++) { const a = l.d === 2 ? Math.PI / 2 : Math.PI * (0.2 + 0.6 * (i - 1) / (l.d - 2)); g += `<ellipse cx="${cx - Math.cos(a) * r * 1.8}" cy="${cy - Math.sin(a) * r * 1.45}" rx="${r * 0.55}" ry="${r * 0.4}" fill="#9a8f86"/>`; }
+  g += `<ellipse cx="${cx}" cy="${cy}" rx="${r}" ry="${r * 0.72}" fill="#1d1b19"/>`;
+  for (let i = 0; i < Math.min(l.n, 8); i++) { const a = l.n === 1 ? -0.2 * Math.PI : Math.PI * (-0.2 + 1.4 * i / (l.n - 1)); g += `<circle cx="${cx + Math.cos(a) * r * 1.4}" cy="${cy + Math.sin(a) * r * 1.0}" r="3.6" fill="#c27b6b"/>`; }
+  if (ly.fg) g += `<rect x="-4" y="91" width="40" height="14" rx="7" fill="#8a847b" opacity=".45" filter="url(#bl)"/>`;
+  return `<svg viewBox="0 0 80 100" role="img" aria-label="構圖示意圖"><defs><clipPath id="fr"><rect width="80" height="100"/></clipPath><filter id="bl"><feGaussianBlur stdDeviation="1.6"/></filter></defs><rect width="80" height="100" fill="#efe9df" stroke="#d8d1c6"/><g clip-path="url(#fr)">${g}</g></svg>`;
+}
 const angle = () => CHOICES.角度.find(a => a.name === S.角度);
 const thumb = p => `<div class="thumb"><img src="img/${p.id}.jpg" alt="${esc(p.name)}" onerror="this.replaceWith(this.alt)"></div>`;
 
@@ -127,10 +144,13 @@ function renderPanel() {
   else if (step === 2) h = `<h2>光調・故事</h2><p class="sub">光決定情緒；故事時刻會在模擬圖加上生活痕跡。</p><h3>光調（照兩頁光線食譜）</h3><p class="sub">亮調＝明亮清爽、適合麵、青菜；暗調＝暖棕有氣勢、適合切盤、湯、滷味。選了光調，下面的光線可以不選。</p>${chips('光調', CHOICES.光調)}<h3>菜色組合</h3><p class="sub">只拍一道容易單調；一主二副＝主菜在前、兩道副菜在後，畫面最豐富（基準第 17 條）。</p>${chips('套餐', CHOICES.套餐)}<h3>光線</h3>${chips('光線', CHOICES.光線)}<h3>故事時刻</h3>${chips('故事', CHOICES.故事)}`;
   else if (name === '構圖等級') {
     const i = Math.max(0, CHOICES.構圖.findIndex(l => l.name === S.構圖));
-    h = `<h2>構圖等級</h2><p class="sub">畫面要放多少東西？等級越高越熱鬧；鹹食一主二副建議 3 以上。</p>
+    h = `<h2>構圖等級</h2><p class="sub">畫面要放多少東西？等級越高越熱鬧；一主二副選 6，多道菜併桌選 7。圖示：黑＝主角、灰＝副菜、紅＝道具、虛線框＝放字。</p>
       <div class="lv"><input type="range" id="lv" min="0" max="${CHOICES.構圖.length - 1}" step="1" value="${i}" aria-label="構圖等級">
-      <div class="lvmarks">${CHOICES.構圖.map((l, j) => `<button data-lv="${j}"><b>${l.name}</b>${l.note}</button>`).join('')}</div>
-      <div class="lvinfo" id="lvInfo">${lvInfo()}</div></div>`;
+      <div class="lvmarks">${CHOICES.構圖.map((l, j) => `<button data-lv="${j}"><b>${l.name}</b><small>${l.note}</small></button>`).join('')}</div>
+      <div class="lvinfo" id="lvInfo">${lvInfo()}</div></div>
+      <h3>主體位置</h3>${chips('位置', CHOICES.位置)}
+      <h3>留白與放字</h3><p class="sub">要放字時主角會變小，建議另做一張留白版；9:16 限動通常選上方留白。</p>${chips('留白', CHOICES.留白)}
+      <h3>層次（前中後景）</h3><p class="sub">前景放一點失焦的東西，畫面會更有縱深。</p>${chips('層次', CHOICES.層次)}`;
   }
   else {
     // 有搜尋字時跨所有類別、所有風格找
@@ -149,13 +169,15 @@ function renderPanel() {
 
 function renderSide() {
   const picked = PROPS.filter(p => S.props.includes(p.id));
-  const tags = [S.業態, S.風格.join('、'), S.角度, S.比例, S.光調, S.套餐, S.構圖 && '構圖 ' + S.構圖, S.光線, S.故事].filter(Boolean).join('｜');
+  const tags = [S.業態, S.風格.join('、'), S.角度, S.比例, S.光調, S.套餐, S.構圖 && '構圖 ' + S.構圖, S.位置, S.留白, S.層次, S.光線, S.故事].filter(Boolean).join('｜');
   const warns = [];
   if (!picked.some(p => p.cat === '桌面')) warns.push('還沒選桌面。');
   if (angle() && !angle().bg && picked.some(p => p.cat === '後景')) warns.push('高角度看不到後景，後景會被忽略。');
   const small = picked.filter(p => ['容器', '餐具', '軟裝', '墊高'].includes(p.cat)).length, lv = level();
   if (lv && small > lv.max) warns.push(`構圖等級 ${lv.name} 建議小道具最多 ${lv.max} 樣，你選了 ${small} 樣。`);
-  if (lv && S.套餐 === '一主二副' && +lv.name < 3) warns.push('一主二副至少要構圖等級 3，畫面才放得下三道菜。');
+  if (lv && S.套餐 === '一主二副' && +lv.name < 6) warns.push('一主二副對應構圖等級 6（或 7、8），現在的等級只放得下一道菜。');
+  if (S.留白 && S.留白 !== '不留白' && S.位置 === '出血大特寫') warns.push('出血大特寫和留白放字互相衝突，建議擇一。');
+  if (lv && lv.name === '8' && S.留白 && S.留白 !== '不留白') warns.push('整桌滿版會鋪滿畫面，留白放字建議改用等級 6 或 7。');
   const pk = picked.find(p => p.id === peek) || picked[picked.length - 1];
   $('#side').innerHTML = `<h2 style="font-size:17px">已選 ${picked.length} 樣</h2><p class="sub">${esc(tags) || '還沒選業態和風格。'}</p>
     ${pk ? `<div class="peek"><img src="img/${pk.id}.jpg" alt="${esc(pk.name)}" data-zoom="${pk.id}"><button class="zoom" data-zoom="${pk.id}" aria-label="放大看 ${esc(pk.name)}">${ZOOM}</button><p>${esc(pk.name)}<small style="color:var(--muted)">｜${esc(pk.size)}</small></p></div>` : ''}
@@ -184,6 +206,7 @@ function buildPrompt(picked) {
   if (set && set.prompt) parts.push(`${set.prompt}。`);
   if (tone) parts.push(`${tone.prompt}。`);
   if (level()) parts.push(`構圖：${level().prompt}。`);
+  ['位置', '留白', '層次'].map(pick).filter(o => o && o.prompt).forEach(o => parts.push(`${o.prompt}。`));
   if (light) parts.push(`光線：${light.prompt}。`);
   if (story && story.prompt) parts.push(`${story.prompt}。`);
   if (a) parts.push(`鏡頭：約 ${a.deg} 度${a.deg >= 90 ? '正俯拍' : '俯角'}，中長焦無變形，${ratioWord(S.比例)}。`);
@@ -199,6 +222,7 @@ function buildJob(subj) {
     `模式：${subj ? 'B 路線：客戶主體照重畫（照片附在這則訊息；店家已書面同意）' : '只要模擬圖（不放客戶主體）'}`,
     `業態／風格：${S.業態 || '未選'}｜${S.風格.join('＋') || '不限'}`,
     `比例：${S.比例 || '未選（預設 4:5）'}`,
+    `構圖細節：${[S.位置, S.留白, S.層次].filter(Boolean).join('｜') || '未選'}`,
     `光調／組合／構圖：${[S.光調, S.套餐, S.構圖 && '等級 ' + S.構圖].filter(Boolean).join('｜') || '未選'}`,
     `角度／光線／故事：${[S.角度, S.光線, S.故事].filter(Boolean).join('｜') || '未選'}`,
     `道具（${picked.length} 樣）：${picked.map(p => p.name).join('、') || '無'}`,
@@ -217,7 +241,7 @@ function renderSheet() {
     <div class="bar noprint"><button id="back">← 回去改</button><button onclick="print()">列印／存 PDF</button><button id="copy">複製提示詞</button></div>
     <p style="letter-spacing:.2em;color:var(--muted);font-size:12px;margin:0">CATEYES STUDIO ・ PROP LIST ・ ${today}</p>
     <h2 style="font-size:24px;margin:6px 0">${esc(S.業態 || '未命名')}｜${esc(S.風格.join('＋') || '不限風格')}</h2>
-    <p class="sub">${esc([S.角度, S.比例, S.光調, S.套餐, S.構圖 && '構圖 ' + S.構圖, S.光線, S.故事].filter(Boolean).join('｜'))}</p>
+    <p class="sub">${esc([S.角度, S.比例, S.光調, S.套餐, S.構圖 && '構圖 ' + S.構圖, S.位置, S.留白, S.層次, S.光線, S.故事].filter(Boolean).join('｜'))}</p>
     <div class="mock"><img src="img/mock.jpg" style="width:100%;height:100%;object-fit:cover;border-radius:6px" alt="模擬圖：把下方提示詞貼給 Claude，報價確認後生成，存成 img/mock.jpg 就會顯示在這裡" onerror="this.replaceWith(this.alt)"></div>
     <p class="sub" style="font-size:12px">模擬圖｜依本清單生成，實際拍攝以實物為準。道具圖為 AI 生成，拍攝前請確認實物。</p>
     ${block('桌面・布料・後景', sur, 0)}${block('容器・餐具・軟裝・墊高', rest, sur.length)}
