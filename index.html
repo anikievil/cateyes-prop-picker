@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="道具選物">
 <meta name="theme-color" content="#1d1b19">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="mobile-web-app-capable" content="yes">
 <style>
 :root{--ink:#1d1b19;--paper:#f6f4f0;--card:#fff;--line:#e3ded6;--muted:#8a847b;--accent:#c9a46a;--warn:#fff4d6;--warn-line:#e8d39a}
 *{box-sizing:border-box}
@@ -249,6 +251,7 @@ function renderSide() {
       picked.filter(p => p.cat === c).map(p => `<div class="sel ${p === pk ? 'pk' : ''}" style="--c:${CAT_COLOR[c]}"><img src="img/${p.id}.jpg" alt=""><span data-peek="${p.id}">${esc(p.name)}<small style="color:var(--muted)">｜${esc(p.style)}</small></span><button data-rm="${p.id}" aria-label="移除">✕</button></div>`).join('')).join('') || '<p class="sub">還沒挑東西。</p>'}
     ${warns.map(w => `<div class="warn">${w}</div>`).join('')}
     <div class="bar"><button id="reset">全部清空</button></div>
+    ${'serviceWorker' in navigator ? `<div class="sv"><h3 style="margin-top:0">離線使用</h3><p class="sub" style="margin-bottom:6px">加到手機主畫面後，沒網路也能開。按下面下載全部道具圖（約 33MB），離線時照片也看得到；只看過的照片會自動存。</p><div class="row"><button id="cacheAll">下載全部道具圖</button><span class="sub" id="cacheMsg" style="margin:0;align-self:center"></span></div></div>` : ''}
     ${presetBox()}`;
   $('#finish').textContent = lastWarns.length ? `完成，出清單（${lastWarns.length} 個提醒）` : '完成，出清單';
 }
@@ -485,6 +488,12 @@ document.addEventListener('input', e => {
 });
 $('#zoomDlg').addEventListener('click', e => e.currentTarget.close());
 $('#search').addEventListener('input', e => { query = e.target.value.trim(); render(); });
+// 離線：註冊 service worker；下載全部道具圖的進度
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.addEventListener('message', e => { const d = e.data, m = $('#cacheMsg'); if (d && d.type === 'cacheProgress' && m) m.textContent = d.done < d.total ? `下載中 ${d.done}／${d.total}` : `完成 ${d.total - d.fail} 張${d.fail ? `，${d.fail} 張失敗（網路恢復後再按一次）` : '，離線也看得到'}`; });
+  document.addEventListener('click', e => { if (e.target.id !== 'cacheAll') return; navigator.serviceWorker.ready.then(r => { r.active.postMessage({ type: 'cacheAll', urls: [...new Set(PROPS.map(p => `img/${p.id}.jpg`))] }); $('#cacheMsg').textContent = '開始下載…'; }); });
+}
 render();
 </script>
 </body>
