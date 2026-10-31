@@ -126,16 +126,20 @@ function buildPrompt(props) {
   const parts = [`商品攝影情境模擬圖，鵝肉小吃風格，主角是「${Q.dishes.join('、')}」（第一個是主菜）。主菜「${main}」${sides.length ? `，副菜「${sides.join('、')}」放在主菜後方` : ''}。`];
   if (set) parts.push(set.prompt + '。');
   if (sp) parts.push(sp.prompt.replace(/直式 2:3/, use && use.ratio !== '2:3' ? (use.ratio === '3:2' ? '橫式 3:2' : '直式 ' + use.ratio) : '直式 2:3') + '。');
-  if (tone) parts.push(tone.prompt + '。');
+  // 沒有牆的範本（同款雙碗、滿版套餐）：光調裡「牆、窗紗緊貼桌後」那句要拿掉，不然和範本互相矛盾
+  if (tone) parts.push((sp && !sp.wall ? tone.prompt.replace(/；?淺色牆或白窗紗緊貼桌後，?/, '；').replace(/深色舊木牆緊貼桌後；?/, '') : tone.prompt) + '。');
   if (use && use.ws) parts.push(use.ws + '。');
   parts.push(`道具：${props.map(p => p.name).join('、')}，每樣都小、不搶主菜，放在碗盤之間的空位與後方，越後面越模糊。`);
   parts.push('擺盤裝飾只用薑絲。如果畫面有飲料，只有一杯。包裝與道具上不要出現任何文字、logo 或圖案。不要人物、不要手、不要蒸氣或煙。所有物件的陰影朝同一個方向。');
   return parts.join('\n');
 }
 function board(props) {   // 版面座標：菜照空間範本的位置，道具接著排；給合成工具 board 指令用
-  const sl = SLOTS[Q.space]; if (!sl) return null;
+  let sl = SLOTS[Q.space]; if (!sl) return null;
+  const use = USES.find(u => u.name === Q.use);
+  if (use && use.ws) sl = sl.map(([x, y, w]) => [x, +(.33 + y * .67).toFixed(3), w]);   // 上方三分之一留白：全部往下移到下方三分之二
   const it = {}; Q.dishes.forEach((d, i) => { const s = sl[Math.min(i, sl.length - 1)]; it[d] = { x: s[0], y: s[1], w: s[2] }; });
-  props.forEach((p, i) => { const s = sl[Q.dishes.length + i]; it[p.name] = s ? { x: s[0], y: s[1], w: Math.min(s[2], .22) } : { x: +(.12 + (i % 5) * .19).toFixed(2), y: .08, w: .14 }; });
+  const spareY = use && use.ws ? .95 : .08;   // 範本格子用完的道具：留白時排在最下面，不佔放字區
+  props.forEach((p, i) => { const s = sl[Q.dishes.length + i]; it[p.name] = s ? { x: s[0], y: s[1], w: Math.min(s[2], .22) } : { x: +(.12 + (i % 5) * .19).toFixed(2), y: spareY, w: .14 }; });
   return { it, focus: +(sl[0][1] + .08).toFixed(2), dof: .08 };
 }
 function job(props, pr) {
