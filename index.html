@@ -61,6 +61,10 @@ dialog#zoomDlg p{margin:0;padding:10px 14px;font-size:14px}
 .lvmarks button{border:0;background:none;cursor:pointer;color:inherit;font-size:13px;padding:4px;text-align:center}
 .lvmarks b{display:block;font-size:20px;color:var(--ink)}
 .lvmarks small{display:block;font-size:11px;line-height:1.3}
+.spc{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:6px}
+.spc button{display:flex;gap:10px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px;cursor:pointer;font:inherit;color:inherit}
+.spc button.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink)}
+.spc svg{flex:none;width:54px;height:81px}.spc b{display:block;font-size:14px}.spc small{color:var(--muted);font-size:12px;line-height:1.4}
 .lvinfo{display:flex;gap:14px;align-items:flex-start}.lvinfo svg{flex:none;width:96px;height:120px}
 @media (max-width:760px){.lvmarks small{display:none}}
 .lvinfo{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
@@ -104,11 +108,11 @@ textarea{width:100%;min-height:150px;font:14px/1.6 inherit;padding:10px;border:1
 <script src="props.js"></script>
 <script>
 // 狀態只存在這台裝置（localStorage），清掉也不影響使用
-const STEPS = ['業態・風格', '角度・比例', '光調・故事', '構圖等級', ...CATS];
+const STEPS = ['業態・風格', '角度・比例', '光調・故事', '空間・構圖', ...CATS];
 // 比例直接當生圖的 aspect_ratio 用
-const RATIOS = [{ name: '4:5', note: '直式・IG 貼文' }, { name: '9:16', note: '直式・限動、Reels' }, { name: '1:1', note: '方形' }, { name: '3:2', note: '橫式・官網、菜單' }, { name: '16:9', note: '橫幅・封面' }];
-const ratioWord = r => ({ '4:5': '直式 4:5', '9:16': '直式 9:16', '1:1': '方形 1:1', '3:2': '橫式 3:2', '16:9': '橫式 16:9' }[r] || '直式');
-const blank = () => ({ 業態: '', 風格: [], 角度: '', 比例: '', 光調: '', 套餐: '', 主角: '', 構圖: '', 位置: '', 留白: '', 層次: '', 光線: '', 故事: '', props: [] });
+const RATIOS = [{ name: '4:5', note: '直式・IG 貼文' }, { name: '2:3', note: '直式・黑本常用' }, { name: '9:16', note: '直式・限動、Reels' }, { name: '1:1', note: '方形' }, { name: '3:2', note: '橫式・官網、菜單' }, { name: '16:9', note: '橫幅・封面' }];
+const ratioWord = r => ({ '4:5': '直式 4:5', '2:3': '直式 2:3', '9:16': '直式 9:16', '1:1': '方形 1:1', '3:2': '橫式 3:2', '16:9': '橫式 16:9' }[r] || '直式');
+const blank = () => ({ 業態: '', 風格: [], 角度: '', 比例: '', 光調: '', 套餐: '', 主角: '', 空間: '', 構圖: '', 位置: '', 留白: '', 層次: '', 光線: '', 故事: '', props: [] });
 let S = blank(), peek = '', lastWarns = [], step = 0, showAll = false, query = '';
 try { S = { ...S, ...JSON.parse(localStorage.getItem('propPick') || '{}') } } catch (e) {}
 const save = () => { try { localStorage.setItem('propPick', JSON.stringify(S)) } catch (e) {} };
@@ -121,6 +125,13 @@ const level = () => CHOICES.構圖.find(l => l.name === S.構圖);
 const lvInfo = () => { const l = level(); return diagram() + '<div>' + (l ? `<b>等級 ${l.name}｜${l.note}</b><p class="sub" style="margin:6px 0 0">${l.prompt}。${l.max < 99 ? `小道具（容器、餐具、軟裝、墊高）建議最多 ${l.max} 樣。` : ''}</p>` : '<b>還沒選</b><p class="sub" style="margin:6px 0 0">拉動上面的拉霸，或點數字。</p>') + '</div>'; };
 const pick = k => CHOICES[k].find(o => o.name === S[k]);
 // 示意圖：直式框裡畫留白區、前景、主角（大橢圓）、副菜（中橢圓）、道具（小圓），跟著等級、位置、留白、層次即時變
+// 空間範本示意圖（2:3 直式框）：牆面、桌面、主角與配角的位置
+function spaceSvg(t) {
+  const W = 60, H = 90, el = t.shapes.map(([k, x, y, w, h, c]) => k === 'e' ? `<ellipse cx="${x * W}" cy="${y * H}" rx="${w * W / 2}" ry="${h * H / 2}" fill="${c}"/>`
+    : k === 'r' ? `<rect x="${(x - w / 2) * W}" y="${(y - h / 2) * H}" width="${w * W}" height="${h * H}" rx="2" fill="${c}"/>`
+    : `<line x1="${x * W}" y1="${y * H}" x2="${w * W}" y2="${h * H}" stroke="${c}" stroke-width="3" stroke-linecap="round"/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><defs><clipPath id="sc${t.level}${t.wall}"><rect width="${W}" height="${H}"/></clipPath></defs><rect width="${W}" height="${H}" fill="#e6dccb"/>${t.wall ? `<rect width="${W}" height="${t.wall * H}" fill="#d9d6d2"/>` : ''}<g clip-path="url(#sc${t.level}${t.wall})">${el}</g><rect width="${W}" height="${H}" fill="none" stroke="#cfc6b8"/></svg>`;
+}
 function diagram() {
   const l = level() || CHOICES.構圖[0], pos = pick('位置') || CHOICES.位置[1], ws = pick('留白') || {}, ly = pick('層次') || {};
   let [ax, ay, aw, ah] = [0, 0, 80, 100]; const side = ws.side;
@@ -150,9 +161,11 @@ function renderPanel() {
     <h3>你賣的是什麼</h3>${chips('業態', CHOICES.業態)}<h3>主角菜色／商品</h3><p class="sub">寫這張圖要放的菜或商品，會直接寫進提示詞（一主二副就寫三道，主菜寫第一個）。</p><input class="main" id="mainIn" value="${esc(S.主角)}" placeholder="例：鵝肉乾麵、滷鵝肝、魚丸湯"><h3>風格（最多 2 個）</h3><p class="sub">風格太多 AI 會混在一起、什麼都不像；選 1 個最穩。</p>${chips('風格', Object.values(STYLES), true)}`;
   else if (step === 1) h = `<h2>角度</h2><p class="sub">角度決定看不看得到後景（鐵則 11）。</p>${['中式餐館／小吃','火鍋','日式料理'].includes(S.業態) ? '<div class="warn">鹹食（湯、麵、肉、小菜）建議「斜拍」或更低的 15–35 度；湯麵不要用高俯（基準第 8 條）。</div>' : ''}${chips('角度', CHOICES.角度)}<h3>圖片比例</h3><p class="sub">看圖要放哪裡：IG 貼文選 4:5，限動選 9:16。</p>${chips('比例', RATIOS)}`;
   else if (step === 2) h = `<h2>光調・故事</h2><p class="sub">光決定情緒；故事時刻會在模擬圖加上生活痕跡。</p><h3>光調（照兩頁光線食譜）</h3><p class="sub">亮調＝明亮清爽、適合麵、青菜；暗調＝暖棕有氣勢、適合切盤、湯、滷味。選了光調，下面的光線可以不選。</p>${chips('光調', CHOICES.光調)}<h3>菜色組合</h3><p class="sub">只拍一道容易單調；一主二副＝主菜在前、兩道副菜在後，畫面最豐富（基準第 17 條）。</p>${chips('套餐', CHOICES.套餐)}<h3>光線</h3>${chips('光線', CHOICES.光線)}<h3>故事時刻</h3>${chips('故事', CHOICES.故事)}`;
-  else if (name === '構圖等級') {
+  else if (name === '空間・構圖') {
     const i = Math.max(0, CHOICES.構圖.findIndex(l => l.name === S.構圖));
-    h = `<h2>構圖等級</h2><p class="sub">畫面要放多少東西？等級越高越熱鬧；一主二副選 6，多道菜併桌選 7。圖示：黑＝主角、灰＝副菜、紅＝道具、虛線框＝放字。</p>
+    h = `<h2>整體視角與空間</h2><p class="sub">選一個空間範本，比例、相機角度、東西怎麼擺都照它做（選了會自動改成 2:3，並帶入建議的構圖等級，可再調）。示意圖：黑＝主角、灰＝副菜、金＝原料或容器、線＝湯匙。</p>
+      <div class="spc">${CHOICES.空間.map(t => `<button class="${S.空間 === t.name ? 'on' : ''}" data-k="空間" data-v="${esc(t.name)}">${spaceSvg(t)}<span><b>${S.空間 === t.name ? '✓ ' : ''}${esc(t.name)}</b><small>${esc(t.note)}</small></span></button>`).join('')}</div>
+      <h2 style="margin-top:26px">構圖等級</h2><p class="sub">畫面要放多少東西？等級越高越熱鬧；一主二副選 6，多道菜併桌選 7。圖示：黑＝主角、灰＝副菜、紅＝道具、虛線框＝放字。</p>
       <div class="lv"><input type="range" id="lv" min="0" max="${CHOICES.構圖.length - 1}" step="1" value="${i}" aria-label="構圖等級">
       <div class="lvmarks">${CHOICES.構圖.map((l, j) => `<button data-lv="${j}"><b>${l.name}</b><small>${l.note}</small></button>`).join('')}</div>
       <div class="lvinfo" id="lvInfo">${lvInfo()}</div></div>
@@ -189,7 +202,7 @@ function presetBox() {
 
 function renderSide() {
   const picked = PROPS.filter(p => S.props.includes(p.id));
-  const tags = [S.業態, S.風格.join('、'), S.角度, S.比例, S.光調, S.套餐, S.構圖 && '構圖 ' + S.構圖, S.位置, S.留白, S.層次, S.光線, S.故事].filter(Boolean).join('｜');
+  const tags = [S.業態, S.風格.join('、'), S.角度, S.比例, S.光調, S.套餐, S.空間, S.構圖 && '構圖 ' + S.構圖, S.位置, S.留白, S.層次, S.光線, S.故事].filter(Boolean).join('｜');
   const warns = [];
   if (!picked.some(p => p.cat === '桌面')) warns.push('還沒選桌面。');
   if (angle() && !angle().bg && picked.some(p => p.cat === '後景')) warns.push('高角度看不到後景，後景會被忽略。');
@@ -234,6 +247,7 @@ function buildPrompt(picked) {
   if (props) parts.push(`道具：${props}，每樣都小、不搶主角，畫面飽滿但有秩序，四角有小物收邊。`);
   if (set && set.prompt) parts.push(`${set.prompt}。`);
   if (tone) parts.push(`${tone.prompt}。`);
+  const sp = pick('空間'); if (sp) parts.push(`${sp.prompt}。`);
   if (level()) parts.push(`構圖：${level().prompt}。`);
   ['位置', '留白', '層次'].map(pick).filter(o => o && o.prompt).forEach(o => parts.push(`${o.prompt}。`));
   if (light) parts.push(`光線：${light.prompt}。`);
@@ -252,7 +266,7 @@ function buildJob(subj) {
     `主角菜色：${S.主角 || '未填'}`,
     `業態／風格：${S.業態 || '未選'}｜${S.風格.join('＋') || '不限'}`,
     `比例：${S.比例 || '未選（預設 4:5）'}`,
-    `構圖細節：${[S.位置, S.留白, S.層次].filter(Boolean).join('｜') || '未選'}`,
+    `構圖細節：${[S.空間 && '空間範本「' + S.空間 + '」', S.位置, S.留白, S.層次].filter(Boolean).join('｜') || '未選'}`,
     `光調／組合／構圖：${[S.光調, S.套餐, S.構圖 && '等級 ' + S.構圖].filter(Boolean).join('｜') || '未選'}`,
     `角度／光線／故事：${[S.角度, S.光線, S.故事].filter(Boolean).join('｜') || '未選'}`,
     `道具（${picked.length} 樣）：${picked.map(p => p.name).join('、') || '無'}`,
@@ -317,6 +331,7 @@ document.addEventListener('click', e => {
     if (k === '風格' && !S[k].includes(v) && S[k].length >= 2) { alert('風格最多選 2 個，先取消一個再選。'); return; }
     if (t.dataset.m) S[k] = S[k].includes(v) ? S[k].filter(x => x !== v) : [...S[k], v];
     else S[k] = S[k] === v ? '' : v;
+    if (k === '空間' && S.空間) { const tp = CHOICES.空間.find(x => x.name === S.空間); S.比例 = tp.ratio; if (!S.構圖) S.構圖 = tp.level; }
   } else if (t.dataset.id) { const id = t.dataset.id; S.props = S.props.includes(id) ? S.props.filter(x => x !== id) : [...S.props, id]; peek = S.props.includes(id) ? id : ''; }
   else if (t.dataset.step) { step = +t.dataset.step; $('#app').hidden = false; $('#sheetWrap').hidden = true; }
   else if (t.dataset.rm) S.props = S.props.filter(x => x !== t.dataset.rm);
