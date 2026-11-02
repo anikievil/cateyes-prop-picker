@@ -49,7 +49,7 @@ textarea{width:100%;min-height:180px;font:13px/1.6 inherit;padding:10px;border:1
 .bar button:disabled{opacity:.4}
 .qb{position:relative;width:100%;background:#e6dccb;border-radius:8px;overflow:hidden;user-select:none;touch-action:none;margin:8px 0}
 .qb .wall{position:absolute;left:0;right:0;top:0;background:#d9d6d2}
-.qb .it{position:absolute;transform:translate(-50%,-50%);cursor:grab;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;text-align:center;color:#333}
+.qb .it{position:absolute;transform:translate(-50%,-50%) rotate(var(--r,0deg));cursor:grab;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;text-align:center;color:#333}
 .qb .it.dish{background:#fff9;border:2px dashed #7a6a55;aspect-ratio:1/.55}
 .qb .it.prop{aspect-ratio:1;background-size:cover;background-position:center;border:1px solid #fff8;box-shadow:0 1px 4px #0003}
 .qb .it.prop span{background:#000a;color:#fff;border-radius:4px;padding:1px 4px;font-size:10px;position:absolute;bottom:2px;left:2px;right:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -84,7 +84,7 @@ textarea{width:100%;min-height:180px;font:13px/1.6 inherit;padding:10px;border:1
   <h3>工作單已準備好</h3>
   <p class="props" id="propsLine"></p>
   <div id="qb"></div>
-  <div class="qbtools"><span>拖＝移動、雙指或滾輪＝縮放；紅線＝對焦（可拖）。拖過的位置會寫進工作單。</span><button id="qbReset">重新排列</button></div>
+  <div class="qbtools"><span>拖＝移動、雙指或滾輪＝縮放、Shift＋滾輪或雙指轉＝旋轉（點兩下轉 15°）；紅線＝對焦（可拖）。拖過的位置會寫進工作單。</span><button id="qbReset">重新排列</button></div>
   <textarea id="job" readonly></textarea>
 </section>
 </main>
@@ -165,7 +165,7 @@ function boardHtml(b, props) {
   const sp = CHOICES.空間.find(t => t.name === Q.space), wall = (sp || {}).wall || 0;
   const byName = Object.fromEntries(props.map(p => [p.name, p]));
   return `<div class="qb" id="qbc" style="aspect-ratio:1/${r}">${wall ? `<div class="wall" style="height:${wall * 100}%"></div>` : ''}
-    ${Object.entries(b.it).sort((a, c) => a[1].y - c[1].y).map(([k, v]) => { const p = byName[k]; return `<div class="it ${p ? 'prop' : 'dish'}" data-k="${esc(k)}" style="left:${v.x * 100}%;top:${v.y * 100}%;width:${v.w * 100}%;${p ? `background-image:url('img/${p.id}.jpg')` : ''}">${p ? `<span>${esc(k)}</span>` : esc(k)}</div>`; }).join('')}
+    ${Object.entries(b.it).sort((a, c) => a[1].y - c[1].y).map(([k, v]) => { const p = byName[k]; return `<div class="it ${p ? 'prop' : 'dish'}" data-k="${esc(k)}" style="left:${v.x * 100}%;top:${v.y * 100}%;width:${v.w * 100}%;--r:${v.r || 0}deg;${p ? `background-image:url('img/${p.id}.jpg')` : ''}">${p ? `<span>${esc(k)}</span>` : esc(k)}</div>`; }).join('')}
     <div class="fl" id="qbf" style="top:${b.focus * 100}%"></div></div>`;
 }
 (() => {   // 畫布互動：滑鼠＋觸控；拖完存 Q.版面 再重畫工作單
@@ -189,11 +189,13 @@ function boardHtml(b, props) {
   document.addEventListener('wheel', e => {
     const it = e.target.closest('#qbc .it'); if (!it) return; e.preventDefault();
     const U = Q.版面 && Q.版面.space === Q.space ? Q.版面 : cur(); Q.版面 = U; const v = U.it[it.dataset.k];
-    v.w = +Math.max(.05, Math.min(1.5, v.w + (e.deltaY < 0 ? .02 : -.02))).toFixed(3); it.style.width = v.w * 100 + '%'; clearTimeout(wheelT); wheelT = setTimeout(() => { save(); render(); }, 300);
+    if (e.shiftKey) { v.r = ((v.r || 0) + (e.deltaY < 0 ? 5 : -5) + 360) % 360; it.style.setProperty('--r', v.r + 'deg'); }
+    else { v.w = +Math.max(.05, Math.min(1.5, v.w + (e.deltaY < 0 ? .02 : -.02))).toFixed(3); it.style.width = v.w * 100 + '%'; } clearTimeout(wheelT); wheelT = setTimeout(() => { save(); render(); }, 300);
   }, { passive: false });
   let wheelT;
-  document.addEventListener('touchstart', e => { const it = e.target.closest('#qbc .it'); if (it && e.touches.length === 2) { const U = Q.版面 && Q.版面.space === Q.space ? Q.版面 : cur(); Q.版面 = U; pinch = { k: it.dataset.k, it, d: Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY), w: U.it[it.dataset.k].w }; } }, { passive: true });
-  document.addEventListener('touchmove', e => { if (!pinch || e.touches.length !== 2) return; const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); const v = Q.版面.it[pinch.k]; v.w = +Math.max(.05, Math.min(1.5, pinch.w * d / pinch.d)).toFixed(3); pinch.it.style.width = v.w * 100 + '%'; }, { passive: true });
+  document.addEventListener('dblclick', e => { const it = e.target.closest('#qbc .it'); if (!it) return; const U = Q.版面 && Q.版面.space === Q.space ? Q.版面 : cur(); Q.版面 = U; const v = U.it[it.dataset.k]; v.r = ((v.r || 0) + 15) % 360; save(); render(); });
+  document.addEventListener('touchstart', e => { const it = e.target.closest('#qbc .it'); if (it && e.touches.length === 2) { const U = Q.版面 && Q.版面.space === Q.space ? Q.版面 : cur(); Q.版面 = U; pinch = { k: it.dataset.k, it, d: Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY), a: Math.atan2(e.touches[1].clientY - e.touches[0].clientY, e.touches[1].clientX - e.touches[0].clientX), w: U.it[it.dataset.k].w, r: U.it[it.dataset.k].r || 0 }; } }, { passive: true });
+  document.addEventListener('touchmove', e => { if (!pinch || e.touches.length !== 2) return; const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); const v = Q.版面.it[pinch.k]; v.w = +Math.max(.05, Math.min(1.5, pinch.w * d / pinch.d)).toFixed(3); pinch.it.style.width = v.w * 100 + '%'; const a = Math.atan2(e.touches[1].clientY - e.touches[0].clientY, e.touches[1].clientX - e.touches[0].clientX); v.r = Math.round(((pinch.r + (a - pinch.a) * 180 / Math.PI) % 360 + 360) % 360); pinch.it.style.setProperty('--r', v.r + 'deg'); }, { passive: true });
   document.addEventListener('touchend', () => { if (pinch) { pinch = null; save(); render(); } });
 })();
 function job(props, pr) {
