@@ -56,6 +56,7 @@ textarea{width:100%;min-height:180px;font:13px/1.6 inherit;padding:10px;border:1
 .qb .it.on{outline:2px solid var(--accent)}
 .qb .fl{position:absolute;left:0;right:0;height:14px;margin-top:-7px;cursor:ns-resize}.qb .fl:before{content:'';display:block;border-top:2px dashed #c33;margin-top:6px}
 .qbtools{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted);margin:0 0 10px}.qbtools button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 10px;font-size:12px;cursor:pointer}
+.cuts{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 10px}.cuts button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:6px;width:118px;cursor:pointer;font:inherit;color:inherit;text-align:center}.cuts button img{width:100%;aspect-ratio:1;object-fit:contain;border-radius:6px;background:#e9e6e1}.cuts button small{display:block;font-size:11px;color:var(--muted)}.cuts button.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink)}.cuts button.far{opacity:.45}.cuts button.far small{color:#b5483d}
 .clear{border:0;background:none;color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;padding:0;margin-left:auto}
 </style>
 </head>
@@ -83,6 +84,7 @@ textarea{width:100%;min-height:180px;font:13px/1.6 inherit;padding:10px;border:1
 <section id="out">
   <h3>工作單已準備好</h3>
   <p class="props" id="propsLine"></p>
+  <div id="cutsBox"></div>
   <div id="qb"></div>
   <div class="qbtools"><span id="qbSel">點一下選物件，再用右邊按鈕轉／縮放；拖＝移動；觸控板雙指捏＝縮放、Shift＋雙指滑＝旋轉；紅線＝對焦（可拖）。</span><button data-qb="r-">↺ 15°</button><button data-qb="r+">↻ 15°</button><button data-qb="w-">小</button><button data-qb="w+">大</button><button id="qbReset">重新排列</button></div>
   <textarea id="job" readonly></textarea>
@@ -109,8 +111,13 @@ const USES = [
 const DRINKS = ['不放飲料', '一杯啤酒', '一杯茶'];
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = s => document.querySelector(s);
-let Q = { dishes: [], tone: '', space: '', spaceAuto: true, use: '', drink: '不放飲料' };
-try { Q = { ...Q, ...JSON.parse(localStorage.getItem('quickPick') || '{}') } } catch (e) {}
+let Q = { dishes: [], tone: '', space: '', spaceAuto: true, use: '', drink: '不放飲料', cut: {} };
+// 本機去背庫（只有在這台電腦的 localhost 開才有；GitHub 版載不到就略過）：本機/去背.json 由 本機/建去背庫.py 產生
+let CUT = [];
+fetch('本機/去背.json').then(r => r.ok ? r.json() : []).then(j => { CUT = j; render(); }).catch(() => {});
+const norm = n => n.replace(/（.*?）/g, '').replace(/^燙/, '').replace(/^鵝油時蔬_/, '');
+const cutsFor = d => CUT.filter(c => { const a = norm(d), b = norm(c.name); return a === b || a.includes(b) || b.includes(a); });
+try { Q = { ...Q, ...JSON.parse(localStorage.getItem('quickPick') || '{}') }; Q.cut = Q.cut || {}; } catch (e) {}
 const save = () => { try { localStorage.setItem('quickPick', JSON.stringify(Q)) } catch (e) {} };
 if (Q.space && !CHOICES.空間.some(t => t.name === Q.space)) { Q.space = ''; Q.spaceAuto = true; }   // 舊版範本名稱作廢
 
@@ -159,13 +166,22 @@ function board(props) {   // 版面座標：菜和道具照版型位子分配（
   return b;
 }
 // 排版畫布：選的菜（虛線框）和道具（圖）都能拖、縮放；紅線＝對焦；存進 Q.版面，工作單直接帶
+function cutsHtml() {
+  if (!CUT.length || !Q.dishes.length) return '';
+  const sp = CHOICES.空間.find(t => t.name === Q.space), ang = sp ? sp.angle : null;
+  return `<h3 style="margin:6px 0 2px;font-size:14px">實拍去背（本機庫，點一張給每道菜）</h3><p class="sub" style="margin:0 0 4px">只顯示在這台電腦；灰掉的是角度跟版型差超過 5°，盡量別用。</p>` + Q.dishes.map(d => {
+    const list = cutsFor(d).map(c => ({ ...c, diff: ang == null ? 0 : Math.abs(c.angle - ang) })).sort((a, b) => a.diff - b.diff);
+    if (!list.length) return `<p class="sub">${esc(d)}：沒有去背，等補拍</p>`;
+    return `<p class="sub" style="margin:6px 0 2px"><b>${esc(d)}</b>（${list.length} 張）</p><div class="cuts">${list.map(c => `<button data-cut="${esc(d)}" data-id="${c.id}" class="${Q.cut[d] === c.id ? 'on' : ''} ${c.diff > 5 ? 'far' : ''}"><img src="本機/縮圖/${c.id}.jpg" loading="lazy"><small>${c.id}｜${Math.round(c.angle)}°${c.diff > 5 ? '（差 ' + Math.round(c.diff) + '°）' : ''}${c.broken ? '｜有缺' : ''}${c.fixed ? '｜修補版' : ''}</small></button>`).join('')}</div>`;
+  }).join('');
+}
 function boardHtml(b, props) {
   if (!b) return '';
   const use = USES.find(u => u.name === Q.use), r = { '9:16': 16 / 9, '2:3': 1.5, '4:5': 1.25, '3:2': 2 / 3 }[(use || {}).ratio] || 1.25;
   const sp = CHOICES.空間.find(t => t.name === Q.space), wall = (sp || {}).wall || 0;
   const byName = Object.fromEntries(props.map(p => [p.name, p]));
   return `<div class="qb" id="qbc" style="aspect-ratio:1/${r}">${wall ? `<div class="wall" style="height:${wall * 100}%"></div>` : ''}
-    ${Object.entries(b.it).sort((a, c) => a[1].y - c[1].y).map(([k, v]) => { const p = byName[k]; return `<div class="it ${p ? 'prop' : 'dish'}${(Q.版面 || {}).sel === k ? ' on' : ''}" data-k="${esc(k)}" style="left:${v.x * 100}%;top:${v.y * 100}%;width:${v.w * 100}%;--r:${v.r || 0}deg;${p ? `background-image:url('img/${p.id}.jpg')` : ''}">${p ? `<span>${esc(k)}</span>` : esc(k)}</div>`; }).join('')}
+    ${Object.entries(b.it).sort((a, c) => a[1].y - c[1].y).map(([k, v]) => { const p = byName[k]; const cid = !p && Q.cut[k]; return `<div class="it ${p || cid ? 'prop' : 'dish'}${(Q.版面 || {}).sel === k ? ' on' : ''}" data-k="${esc(k)}" style="left:${v.x * 100}%;top:${v.y * 100}%;width:${v.w * 100}%;--r:${v.r || 0}deg;${p ? `background-image:url('img/${p.id}.jpg')` : cid ? `background-image:url('本機/縮圖/${cid}.jpg');background-size:contain;background-repeat:no-repeat;background-color:transparent;border:0;box-shadow:none` : ''}">${p || cid ? `<span>${esc(k)}</span>` : esc(k)}</div>`; }).join('')}
     <div class="fl" id="qbf" style="top:${b.focus * 100}%"></div></div>`;
 }
 (() => {   // 畫布互動：滑鼠＋觸控；拖完存 Q.版面 再重畫工作單
@@ -203,6 +219,7 @@ function job(props, pr) {
   return ['【貓眼道具選物｜生圖工作單（快速版）】', '模式：只要模擬圖（不放客戶主體）', '店家：鵝樂香', `主角菜色：${Q.dishes.join('、')}`,
     `比例：${use ? use.ratio : '4:5'}｜用途：${Q.use}`, `光調／空間：${Q.tone}｜版型「${Q.space}」｜相機約 ${sp ? sp.angle : ''}°（去背圖要配 ±5°）｜構圖等級 ${sp ? sp.level : ''}`,
     `道具（${props.length} 樣）：${props.map(p => p.name).join('、')}`,
+    CUT.length ? `去背：${Q.dishes.map(d => d + '=' + (Q.cut[d] || '未選')).join('、')}（本機去背庫 道具選物/本機/去背.json）` : '',
     b ? `版面座標（給合成工具，x/y＝中心、w＝寬，畫面比例）：${JSON.stringify(b.it)}｜focus=${b.focus} dof=${b.dof}` : '',
     '', '提示詞：', pr, '', '請照作業規則：先報價等我回 k；出圖要過鐵則 11 角度檢查與基準 19 條（作業規則第九節）；菜用去背分類裡角度對的實拍圖。'].filter(l => l !== null).join('\n').replace(/\n{3,}/g, '\n\n');
 }
@@ -217,7 +234,7 @@ function render() {
   [['h1', Q.dishes.length], ['h2', Q.tone], ['h3', Q.space], ['h4', Q.use]].forEach(([id, v]) => $('#' + id).classList.toggle('ok', !!(v && v.length !== 0)));
   const ready = Q.dishes.length && Q.tone && Q.space && Q.use;
   $('#cpJob').disabled = $('#cpPrompt').disabled = !ready; $('#out').classList.toggle('show', !!ready);
-  if (ready) { const ps = pickProps(), pr = buildPrompt(ps); $('#job').value = job(ps, pr); $('#job').dataset.prompt = pr; $('#qb').innerHTML = boardHtml(board(ps), ps); $('#propsLine').textContent = `自動帶入 ${ps.length} 樣配件：${ps.map(p => p.name).join('、')}`; }
+  if (ready) { const ps = pickProps(), pr = buildPrompt(ps); $('#job').value = job(ps, pr); $('#job').dataset.prompt = pr; $('#cutsBox').innerHTML = cutsHtml(); $('#qb').innerHTML = boardHtml(board(ps), ps); $('#propsLine').textContent = `自動帶入 ${ps.length} 樣配件：${ps.map(p => p.name).join('、')}`; }
   $('#cpJob').textContent = ready ? '複製工作單' : `還差 ${[!Q.dishes.length && '選菜', !Q.tone && '光調', !Q.space && '空間', !Q.use && '用途'].filter(Boolean).join('、')}`;
   save();
 }
@@ -230,6 +247,7 @@ document.addEventListener('click', e => {
   else if (b.dataset.k) Q.drink = b.dataset.k;
   else if (b.id === 'clr') Q = { dishes: [], tone: '', space: '', spaceAuto: true, use: '', drink: '不放飲料' };
   else if (b.id === 'qbReset') Q.版面 = null;
+  else if (b.dataset.cut) { const d = b.dataset.cut; Q.cut[d] = Q.cut[d] === b.dataset.id ? null : b.dataset.id; }
   else if (b.dataset.qb) { const U = Q.版面 && Q.版面.space === Q.space ? Q.版面 : null; const v = U && U.sel && U.it[U.sel]; if (!v) { $('#qbSel').textContent = '先在畫布點一下要調的物件'; return; }
     const a = b.dataset.qb; if (a[0] === 'r') v.r = ((v.r || 0) + (a[1] === '+' ? 15 : -15) + 360) % 360; else v.w = +Math.max(.05, Math.min(1.5, v.w + (a[1] === '+' ? .04 : -.04))).toFixed(3); }
   else if (b.id === 'cpJob' || b.id === 'cpPrompt') { const txt = b.id === 'cpJob' ? $('#job').value : $('#job').dataset.prompt; navigator.clipboard.writeText(txt).then(() => { b.textContent = '已複製 ✓'; setTimeout(render, 1500); }, () => prompt('複製這段：', txt)); return; }
