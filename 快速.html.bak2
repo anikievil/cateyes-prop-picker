@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>快速選物</title>
+<link rel="manifest" href="manifest-quick.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="快速選物">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#1d1b19">
+<style>
+:root{--ink:#1d1b19;--paper:#f6f4f0;--card:#fff;--line:#e3ded6;--muted:#8a847b;--accent:#c9a46a}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Noto Sans TC","PingFang TC",system-ui,sans-serif;background:var(--paper);color:var(--ink)}
+header{position:sticky;top:0;z-index:5;background:var(--ink);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px}
+header b{font-size:18px}header b span{color:var(--accent)}
+header a{margin-left:auto;color:#ddd;font-size:13px;text-decoration:none;border:1px solid #555;border-radius:999px;padding:6px 12px}
+main{max-width:640px;margin:0 auto;padding:14px 16px 120px}
+h2{font-size:17px;margin:22px 0 4px;display:flex;align-items:center;gap:8px}
+h2 i{font-style:normal;background:var(--ink);color:#fff;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:13px}
+h2.ok i{background:#2f7d4f}
+.sub{color:var(--muted);font-size:13px;margin:0 0 8px}
+.grp{font-size:12px;color:var(--muted);margin:10px 0 4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:10px 14px;font-size:15px;cursor:pointer;color:inherit;position:relative}
+.chips button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chips button b{display:inline-flex;align-items:center;justify-content:center;background:var(--accent);color:var(--ink);border-radius:50%;width:20px;height:20px;font-size:12px;margin-right:6px}
+.big{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.big button{display:flex;gap:10px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px;cursor:pointer;font:inherit;color:inherit}
+.big button.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink)}
+.big svg{flex:none;width:40px;height:60px}.big b{display:block;font-size:14px}.big small{color:var(--muted);font-size:12px;line-height:1.35}
+.tone{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tone button{border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;font:inherit;text-align:left}
+.tone button.on{box-shadow:0 0 0 2px var(--ink);border-color:var(--ink)}
+.tone .lt{background:#faf7f1;color:var(--ink)}.tone .dk{background:#2b2420;color:#f3e8d8}
+.tone b{display:block;font-size:16px}.tone small{font-size:12px;opacity:.8}
+#out{display:none;margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+#out.show{display:block}
+#out h3{margin:0 0 6px;font-size:15px}
+#out .props{font-size:13px;color:var(--muted);margin:0 0 10px;line-height:1.6}
+textarea{width:100%;min-height:180px;font:13px/1.6 inherit;padding:10px;border:1px solid var(--line);border-radius:8px}
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:6;background:#fffffff2;border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;justify-content:center;backdrop-filter:blur(6px)}
+.bar button{border-radius:999px;padding:12px 16px;font-size:15px;cursor:pointer;border:1px solid var(--ink);background:#fff;color:var(--ink)}
+.bar button.pri{background:var(--ink);color:#fff;flex:1;max-width:280px}
+.bar button:disabled{opacity:.4}
+.clear{border:0;background:none;color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;padding:0;margin-left:auto}
+</style>
+</head>
+<body>
+<header><b>貓眼<span>快速選物</span></b><a href="index.html" id="toFull">完整版細調 →</a></header>
+<main>
+<p class="sub">四步選完，下面直接出工作單。店家：鵝樂香（菜名照菜單）。</p>
+
+<h2 id="h1"><i>1</i>選菜（第一個點的是主菜）<button class="clear" id="clr">清空重選</button></h2>
+<div id="dishes"></div>
+
+<h2 id="h2"><i>2</i>光調</h2>
+<div class="tone" id="tone"></div>
+
+<h2 id="h3"><i>3</i>空間</h2>
+<p class="sub">範本會決定角度、東西放哪裡、構圖等級。</p>
+<div class="big" id="space"></div>
+
+<h2 id="h4"><i>4</i>用途</h2>
+<div class="chips" id="use"></div>
+
+<h2 id="h5"><i>＋</i>飲料（可不選）</h2>
+<div class="chips" id="drink"></div>
+
+<section id="out">
+  <h3>工作單已準備好</h3>
+  <p class="props" id="propsLine"></p>
+  <textarea id="job" readonly></textarea>
+</section>
+</main>
+<div class="bar"><button id="cpPrompt" disabled>複製提示詞</button><button class="pri" id="cpJob" disabled>複製工作單</button></div>
+
+<script src="props.js"></script>
+<script>
+// 快速版：選菜→光調→空間→用途，自動帶配件、比例、構圖，出提示詞與工作單；選擇存在這台裝置
+const MENU = {   // 鵝樂香菜單（給店家確認/菜單與確認答案.md）
+  '切盤': ['鹽水鵝切盤', '茶鵝切盤'],
+  '麵／飯': ['鵝肉乾拌麵', '鵝油乾拌麵', '鵝肉湯麵', '餛飩乾拌麵', '餛飩湯麵', '鵝肉冬粉湯', '清冬粉湯', '滷肉飯', '鵝油飯', '白飯'],
+  '湯': ['虱目魚丸湯', '桂竹筍湯', '餛飩湯', '虱目魚皮湯', '當歸鵝血糕湯'],
+  '小菜': ['香油豆干', '鵝血糕', '桂竹筍', '鵝油炒手', '蒜泥白肉', '蒜蓉虱目魚皮', '豆芽拌鵝腸', '滷蛋', '鵝心', '麻油鵝肝', '蒜香鵝腱', '鵝汁滷花生', '柚香醃蘿蔔', '涼拌小黃瓜'],
+  '鵝油時蔬': ['燙地瓜葉', '燙高麗菜', '燙豆芽菜'],
+};
+const USES = [
+  { name: 'IG 貼文', note: '4:5', ratio: '4:5', ws: '' },
+  { name: '限動／Reels 要放字', note: '9:16 上方留白', ratio: '9:16', ws: '畫面上方約三分之一留乾淨的背景空白（之後放標題文字），空白處不放任何物件' },
+  { name: '照範本比例', note: '2:3', ratio: '2:3', ws: '' },
+  { name: '官網／菜單橫圖', note: '3:2', ratio: '3:2', ws: '' },
+];
+const DRINKS = ['不放飲料', '一杯啤酒', '一杯茶'];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const $ = s => document.querySelector(s);
+let Q = { dishes: [], tone: '', space: '', use: '', drink: '不放飲料' };
+try { Q = { ...Q, ...JSON.parse(localStorage.getItem('quickPick') || '{}') } } catch (e) {}
+const save = () => { try { localStorage.setItem('quickPick', JSON.stringify(Q)) } catch (e) {} };
+
+function spaceSvg(t) {
+  const W = 60, H = 90, el = t.shapes.map(([k, x, y, w, h, c]) => k === 'e' ? `<ellipse cx="${x * W}" cy="${y * H}" rx="${w * W / 2}" ry="${h * H / 2}" fill="${c}"/>`
+    : k === 'r' ? `<rect x="${(x - w / 2) * W}" y="${(y - h / 2) * H}" width="${w * W}" height="${h * H}" rx="2" fill="${c}"/>`
+    : `<line x1="${x * W}" y1="${y * H}" x2="${w * W}" y2="${h * H}" stroke="${c}" stroke-width="3" stroke-linecap="round"/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="#e6dccb"/>${t.wall ? `<rect width="${W}" height="${t.wall * H}" fill="#d9d6d2"/>` : ''}${el}</svg>`;
+}
+// 依菜色挑配件：同完整版的 DISH_PROPS；飲料另外選、只放一杯
+function pickProps() {
+  const names = []; Q.dishes.forEach(d => DISH_PROPS.forEach(([re, list]) => { if (new RegExp(re).test(d)) names.push(...list); }));   // 主菜的配件排最前面，再來副菜
+  names.push('空白木製價目牌（無字）', '姑婆芋大葉盆栽');
+  if (Q.drink === '一杯啤酒') names.push('空玻璃啤酒杯（無字）'); if (Q.drink === '一杯茶') names.push('空玻璃茶杯');
+  const seen = new Set();
+  let ps = names.filter(n => !seen.has(n) && seen.add(n)).map(n => PROPS.find(p => p.name === n && p.style === '鵝肉小吃') || PROPS.find(p => p.name === n)).filter(Boolean);
+  const lv = CHOICES.構圖.find(l => l.name === (CHOICES.空間.find(s => s.name === Q.space) || {}).level);
+  const max = lv ? Math.min(Math.max(lv.max, 5), 7) : 6;   // 照構圖等級控制數量，至少 5 樣（七組評分：太空）、最多 7 樣
+  const drink = ps.filter(p => /杯/.test(p.name)); ps = ps.filter(p => !/杯/.test(p.name)).slice(0, max - drink.length);
+  return [...ps, ...drink];
+}
+function buildPrompt(props) {
+  const sp = CHOICES.空間.find(s => s.name === Q.space), tone = CHOICES.光調.find(t => t.name === Q.tone), use = USES.find(u => u.name === Q.use);
+  const [main, ...sides] = Q.dishes, set = Q.dishes.length >= 3 ? CHOICES.套餐.find(t => t.name === '一主二副') : null;
+  const parts = [`商品攝影情境模擬圖，鵝肉小吃風格，主角是「${Q.dishes.join('、')}」（第一個是主菜）。主菜「${main}」${sides.length ? `，副菜「${sides.join('、')}」放在主菜後方` : ''}。`];
+  if (set) parts.push(set.prompt + '。');
+  if (sp) parts.push(sp.prompt.replace(/直式 2:3/, use && use.ratio !== '2:3' ? (use.ratio === '3:2' ? '橫式 3:2' : '直式 ' + use.ratio) : '直式 2:3') + '。');
+  // 沒有牆的範本（同款雙碗、滿版套餐）：光調裡「牆、窗紗緊貼桌後」那句要拿掉，不然和範本互相矛盾
+  if (tone) parts.push((sp && !sp.wall ? tone.prompt.replace(/；?淺色牆或白窗紗緊貼桌後，?/, '；').replace(/深色舊木牆緊貼桌後；?/, '') : tone.prompt) + '。');
+  if (use && use.ws) parts.push(use.ws + '。');
+  parts.push(`道具：${props.map(p => p.name).join('、')}，每樣都小、不搶主菜，放在碗盤之間的空位與後方，越後面越模糊。`);
+  parts.push('擺盤裝飾只用薑絲。如果畫面有飲料，只有一杯。包裝與道具上不要出現任何文字、logo 或圖案。不要人物、不要手、不要蒸氣或煙。所有物件的陰影朝同一個方向。');
+  return parts.join('\n');
+}
+function board(props) {   // 版面座標：菜照空間範本的位置，道具接著排；給合成工具 board 指令用
+  let sl = SLOTS[Q.space]; if (!sl) return null;
+  const use = USES.find(u => u.name === Q.use);
+  if (use && use.ws) sl = sl.map(([x, y, w]) => [x, +(.33 + y * .67).toFixed(3), w]);   // 上方三分之一留白：全部往下移到下方三分之二
+  const it = {}; Q.dishes.forEach((d, i) => { const s = sl[Math.min(i, sl.length - 1)]; it[d] = { x: s[0], y: s[1], w: s[2] }; });
+  const spareY = use && use.ws ? .95 : .08;   // 範本格子用完的道具：留白時排在最下面，不佔放字區
+  props.forEach((p, i) => { const s = sl[Q.dishes.length + i]; it[p.name] = s ? { x: s[0], y: s[1], w: Math.min(s[2], .22) } : { x: +(.12 + (i % 5) * .19).toFixed(2), y: spareY, w: .14 }; });
+  return { it, focus: +(sl[0][1] + .08).toFixed(2), dof: .08 };
+}
+function job(props, pr) {
+  const sp = CHOICES.空間.find(s => s.name === Q.space), use = USES.find(u => u.name === Q.use), b = board(props);
+  return ['【貓眼道具選物｜生圖工作單（快速版）】', '模式：只要模擬圖（不放客戶主體）', '店家：鵝樂香', `主角菜色：${Q.dishes.join('、')}`,
+    `比例：${use ? use.ratio : '4:5'}｜用途：${Q.use}`, `光調／空間：${Q.tone}｜空間範本「${Q.space}」｜構圖等級 ${sp ? sp.level : ''}`,
+    `道具（${props.length} 樣）：${props.map(p => p.name).join('、')}`,
+    b ? `版面座標（給合成工具，x/y＝中心、w＝寬，畫面比例）：${JSON.stringify(b.it)}｜focus=${b.focus} dof=${b.dof}` : '',
+    '', '提示詞：', pr, '', '請照作業規則：先報價等我回 k；出圖要過鐵則 11 角度檢查與基準 19 條（作業規則第九節）；菜用去背分類裡角度對的實拍圖。'].filter(l => l !== null).join('\n').replace(/\n{3,}/g, '\n\n');
+}
+function render() {
+  $('#dishes').innerHTML = Object.entries(MENU).map(([g, list]) => `<div class="grp">${g}</div><div class="chips">${list.map(d => { const i = Q.dishes.indexOf(d); return `<button data-d="${esc(d)}" class="${i >= 0 ? 'on' : ''}">${i >= 0 ? `<b>${i + 1}</b>` : ''}${esc(d)}</button>`; }).join('')}</div>`).join('');
+  $('#tone').innerHTML = CHOICES.光調.map(t => `<button data-t="${t.name}" class="${t.name === '亮調' ? 'lt' : 'dk'} ${Q.tone === t.name ? 'on' : ''}"><b>${Q.tone === t.name ? '✓ ' : ''}${t.name}</b><small>${t.note}</small></button>`).join('');
+  $('#space').innerHTML = CHOICES.空間.map(t => `<button data-s="${esc(t.name)}" class="${Q.space === t.name ? 'on' : ''}">${spaceSvg(t)}<span><b>${Q.space === t.name ? '✓ ' : ''}${esc(t.name)}</b><small>${esc(t.note)}</small></span></button>`).join('');
+  $('#use').innerHTML = USES.map(u => `<button data-u="${esc(u.name)}" class="${Q.use === u.name ? 'on' : ''}">${esc(u.name)}<small style="margin-left:6px;opacity:.7">${u.note}</small></button>`).join('');
+  $('#drink').innerHTML = DRINKS.map(d => `<button data-k="${d}" class="${Q.drink === d ? 'on' : ''}">${d}</button>`).join('');
+  [['h1', Q.dishes.length], ['h2', Q.tone], ['h3', Q.space], ['h4', Q.use]].forEach(([id, v]) => $('#' + id).classList.toggle('ok', !!(v && v.length !== 0)));
+  const ready = Q.dishes.length && Q.tone && Q.space && Q.use;
+  $('#cpJob').disabled = $('#cpPrompt').disabled = !ready; $('#out').classList.toggle('show', !!ready);
+  if (ready) { const ps = pickProps(), pr = buildPrompt(ps); $('#job').value = job(ps, pr); $('#job').dataset.prompt = pr; $('#propsLine').textContent = `自動帶入 ${ps.length} 樣配件：${ps.map(p => p.name).join('、')}`; }
+  $('#cpJob').textContent = ready ? '複製工作單' : `還差 ${[!Q.dishes.length && '選菜', !Q.tone && '光調', !Q.space && '空間', !Q.use && '用途'].filter(Boolean).join('、')}`;
+  save();
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.d) { const d = b.dataset.d; Q.dishes = Q.dishes.includes(d) ? Q.dishes.filter(x => x !== d) : [...Q.dishes, d]; }
+  else if (b.dataset.t) Q.tone = Q.tone === b.dataset.t ? '' : b.dataset.t;
+  else if (b.dataset.s) Q.space = Q.space === b.dataset.s ? '' : b.dataset.s;
+  else if (b.dataset.u) Q.use = Q.use === b.dataset.u ? '' : b.dataset.u;
+  else if (b.dataset.k) Q.drink = b.dataset.k;
+  else if (b.id === 'clr') Q = { dishes: [], tone: '', space: '', use: '', drink: '不放飲料' };
+  else if (b.id === 'cpJob' || b.id === 'cpPrompt') { const txt = b.id === 'cpJob' ? $('#job').value : $('#job').dataset.prompt; navigator.clipboard.writeText(txt).then(() => { b.textContent = '已複製 ✓'; setTimeout(render, 1500); }, () => prompt('複製這段：', txt)); return; }
+  else return;
+  render();
+  if (b.dataset.u && Q.dishes.length && Q.tone && Q.space) $('#out').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+// 到完整版：把快速版的選擇轉成完整版的格式帶過去（完整版選擇會被取代）
+$('#toFull').addEventListener('click', e => {
+  if (!Q.dishes.length) return;
+  e.preventDefault();
+  if (!confirm('把快速版的選擇帶到完整版？完整版目前的選擇會被取代。')) { location.href = 'index.html'; return; }
+  const ps = pickProps(), use = USES.find(u => u.name === Q.use), sp = CHOICES.空間.find(s => s.name === Q.space), b = board(ps);
+  const S = { 業態: '中式餐館／小吃', 風格: ['鵝肉小吃'], 主角: Q.dishes.join('、'), 角度: '', 比例: use ? use.ratio : (sp ? sp.ratio : '4:5'), 光調: Q.tone, 套餐: Q.dishes.length >= 3 ? '一主二副' : '單品', 空間: Q.space,
+    版面: b ? { it: Object.fromEntries([...Q.dishes.map((d, i) => ['d' + i, b.it[d]]), ...ps.map(p => ['p:' + p.id, b.it[p.name]])]), focus: b.focus, dof: b.dof, up: [] } : null,
+    構圖: sp ? sp.level : '', 位置: '', 留白: use && use.ws ? '上方留白' : '', 層次: '', 光線: '', 故事: '', props: ps.map(p => p.id) };
+  try { localStorage.setItem('propPick', JSON.stringify(S)); } catch (err) {}
+  location.href = 'index.html';
+});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+render();
+</script>
+</body>
+</html>

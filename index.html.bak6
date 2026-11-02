@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>貓眼道具選物</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="道具選物">
+<meta name="theme-color" content="#1d1b19">
+<style>
+:root{--ink:#1d1b19;--paper:#f6f4f0;--card:#fff;--line:#e3ded6;--muted:#8a847b;--accent:#c9a46a;--warn:#fff4d6;--warn-line:#e8d39a}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;font-family:"Noto Sans TC","PingFang TC",system-ui,sans-serif;background:var(--paper);color:var(--ink)}
+header{position:sticky;top:0;z-index:5;background:var(--ink);color:#fff;display:flex;gap:10px;align-items:center;padding:10px 16px;flex-wrap:wrap}
+header b{font-size:18px;white-space:nowrap}header b span{color:var(--accent)}
+nav{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+nav button{background:none;border:1px solid #555;color:#ddd;border-radius:999px;padding:6px 12px;font-size:14px;cursor:pointer}
+nav button.on{background:#fff;color:var(--ink);border-color:#fff}
+#search{background:#2b2926;border:1px solid #555;color:#fff;border-radius:999px;padding:7px 14px;min-width:160px}
+.done{background:var(--accent);color:var(--ink);border:0;border-radius:999px;padding:9px 18px;font-weight:700;cursor:pointer}
+main{display:grid;grid-template-columns:1fr 300px;min-height:calc(100vh - 56px)}
+#panel{padding:20px 18px 80px}
+aside{border-left:1px solid var(--line);padding:18px;background:#fbfaf7}
+h2{margin:0 0 4px;font-size:20px}.sub{color:var(--muted);margin:0 0 16px;font-size:14px}
+h3{border-left:4px solid var(--ink);padding-left:8px;font-size:16px;margin:22px 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:9px 16px;cursor:pointer;font-size:15px}
+.chip small{color:var(--muted);margin-left:6px}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}.chip.on small{color:#ccc}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.card{background:var(--card);border:2px solid transparent;border-radius:10px;overflow:hidden;cursor:pointer;box-shadow:0 1px 2px #0001}
+.card.on{border-color:var(--ink)}
+.thumb{aspect-ratio:1;background:#e9e6e1;display:flex;align-items:center;justify-content:center;text-align:center;color:#9a948b;font-size:13px;padding:8px}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.card .t{padding:8px 10px;font-size:14px}.card .t small{display:block;color:var(--muted);font-size:12px}
+.next{margin-top:28px;background:var(--ink);color:#fff;border:0;border-radius:999px;padding:12px 22px;font-size:15px;cursor:pointer}
+.warn{background:var(--warn);border:1px solid var(--warn-line);border-radius:8px;padding:10px 12px;font-size:13px;margin:10px 0}
+.sel{font-size:14px;margin:4px 0;display:flex;justify-content:space-between;gap:6px}
+.grp{margin:12px 0 4px;padding-top:10px;border-top:1px solid var(--line);font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px}
+.grp:first-of-type{border-top:0;padding-top:0}
+.grp i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.grp small{color:var(--muted);font-weight:400}
+.sel{border-left:3px solid var(--c,#ccc);padding-left:8px}
+.sel button{border:0;background:none;color:var(--muted);cursor:pointer}
+label.tog{font-size:13px;color:var(--muted);display:inline-flex;gap:6px;align-items:center;margin-bottom:10px}
+/* 清單頁 */
+#sheet{max-width:820px;margin:0 auto;padding:28px 20px 80px;background:#fff}
+.mock{aspect-ratio:3/2;background:#ece8e2;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#9a948b;text-align:center;padding:20px}
+.items{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px}
+.items .n{display:inline-block;background:var(--ink);color:#fff;border-radius:50%;width:22px;height:22px;text-align:center;font-size:12px;line-height:22px;margin-right:4px}
+.items small{color:var(--muted);display:block;font-size:12px}
+textarea{width:100%;min-height:150px;font:14px/1.6 inherit;padding:10px;border:1px solid var(--line);border-radius:8px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.bar button{border:1px solid var(--ink);background:#fff;border-radius:999px;padding:8px 16px;cursor:pointer}
+@media (max-width:760px){main{grid-template-columns:1fr}aside{border-left:0;border-top:1px solid var(--line)}
+  header{gap:8px;padding:8px 12px}nav{order:3;flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px}nav button{flex:none}
+  #search{flex:1;min-width:0}.done{padding:8px 12px}.grid{grid-template-columns:repeat(2,1fr)}}
+@media print{header,.bar,.noprint{display:none!important}#sheet{padding:0}body{background:#fff}}
+</style>
+</head>
+<body>
+<header>
+  <b>貓眼<span>道具選物</span></b>
+  <nav id="nav"></nav>
+  <input id="search" placeholder="搜尋：亞麻、搪瓷、黃銅…">
+  <button class="done" id="finish">完成，出清單</button>
+</header>
+<main id="app">
+  <section id="panel"></section>
+  <aside id="side"></aside>
+</main>
+<div id="sheetWrap" hidden></div>
+<script src="props.js"></script>
+<script>
+// 狀態只存在這台裝置（localStorage），清掉也不影響使用
+const STEPS = ['業態・風格', '角度・比例', '光調・故事', ...CATS];
+// 比例直接當生圖的 aspect_ratio 用
+const RATIOS = [{ name: '4:5', note: '直式・IG 貼文' }, { name: '9:16', note: '直式・限動、Reels' }, { name: '1:1', note: '方形' }, { name: '3:2', note: '橫式・官網、菜單' }, { name: '16:9', note: '橫幅・封面' }];
+const ratioWord = r => ({ '4:5': '直式 4:5', '9:16': '直式 9:16', '1:1': '方形 1:1', '3:2': '橫式 3:2', '16:9': '橫式 16:9' }[r] || '直式');
+const blank = () => ({ 業態: '', 風格: [], 角度: '', 比例: '', 光調: '', 套餐: '', 光線: '', 故事: '', props: [] });
+let S = blank(), step = 0, showAll = false, query = '';
+try { S = { ...S, ...JSON.parse(localStorage.getItem('propPick') || '{}') } } catch (e) {}
+const save = () => { try { localStorage.setItem('propPick', JSON.stringify(S)) } catch (e) {} };
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// 已選清單分組用的顏色（一類一色）
+const CAT_COLOR = { 桌面: '#8b6b4a', 布料: '#c9a46a', 後景: '#7a8fa3', 容器: '#6f9a7a', 餐具: '#9a8f86', 軟裝: '#c27b6b', 墊高: '#8f7aa8' };
+const angle = () => CHOICES.角度.find(a => a.name === S.角度);
+const thumb = p => `<div class="thumb"><img src="img/${p.id}.jpg" alt="${esc(p.name)}" onerror="this.replaceWith(this.alt)"></div>`;
+
+function chips(key, list, multi) {
+  return `<div class="chips">${list.map(o => {
+    const name = o.name || o, on = multi ? S[key].includes(name) : S[key] === name;
+    return `<button class="chip ${on ? 'on' : ''}" data-k="${key}" data-v="${esc(name)}" data-m="${multi ? 1 : ''}">${on ? '✓ ' : ''}${esc(name)}${o.note ? `<small>${esc(o.note)}</small>` : ''}</button>`;
+  }).join('')}</div>`;
+}
+
+function renderPanel() {
+  const name = STEPS[step];
+  let h = '';
+  if (step === 0) h = `<h2>業態・風格</h2><p class="sub">先選賣什麼、要什麼風格；後面的道具會先只顯示這些風格。</p>
+    <h3>你賣的是什麼</h3>${chips('業態', CHOICES.業態)}<h3>風格（可複選）</h3>${chips('風格', Object.values(STYLES), true)}`;
+  else if (step === 1) h = `<h2>角度</h2><p class="sub">角度決定看不看得到後景（鐵則 11）。</p>${['中式餐館／小吃','火鍋','日式料理'].includes(S.業態) ? '<div class="warn">鹹食（湯、麵、肉、小菜）建議「斜拍」或更低的 15–35 度；湯麵不要用高俯（基準第 8 條）。</div>' : ''}${chips('角度', CHOICES.角度)}<h3>圖片比例</h3><p class="sub">看圖要放哪裡：IG 貼文選 4:5，限動選 9:16。</p>${chips('比例', RATIOS)}`;
+  else if (step === 2) h = `<h2>光調・故事</h2><p class="sub">光決定情緒；故事時刻會在模擬圖加上生活痕跡。</p><h3>光調（照兩頁光線食譜）</h3><p class="sub">亮調＝明亮清爽、適合麵、青菜；暗調＝暖棕有氣勢、適合切盤、湯、滷味。選了光調，下面的光線可以不選。</p>${chips('光調', CHOICES.光調)}<h3>菜色組合</h3><p class="sub">只拍一道容易單調；一主二副＝主菜在前、兩道副菜在後，畫面最豐富（基準第 17 條）。</p>${chips('套餐', CHOICES.套餐)}<h3>光線</h3>${chips('光線', CHOICES.光線)}<h3>故事時刻</h3>${chips('故事', CHOICES.故事)}`;
+  else {
+    // 有搜尋字時跨所有類別、所有風格找
+    const filt = query ? PROPS.filter(p => (p.name + p.cat + p.style).includes(query))
+      : PROPS.filter(p => p.cat === name && (showAll || !S.風格.length || S.風格.includes(p.style)));
+    const styles = [...new Set(filt.map(p => p.style))];
+    h = `<h2>${query ? `搜尋「${esc(query)}」` : name}</h2><p class="sub">點圖卡加入清單，再點一次取消。</p>
+      ${name === '後景' && angle() && !angle().bg ? `<div class="warn">你選了「${angle().name}」：這個角度幾乎看不到後景，後景可以不選（鐵則 11）。</div>` : ''}
+      <label class="tog"><input type="checkbox" id="all" ${showAll ? 'checked' : ''}> 顯示全部風格</label>
+      ${styles.map(st => `<h3>${st}</h3><div class="grid">${filt.filter(p => p.style === st).map(p =>
+        `<div class="card ${S.props.includes(p.id) ? 'on' : ''}" data-id="${p.id}">${thumb(p)}<div class="t">${esc(p.name)}<small>${esc(p.size)}</small></div></div>`).join('')}</div>`).join('') || '<p class="sub">沒有符合的道具。</p>'}`;
+  }
+  if (step < STEPS.length - 1) h += `<button class="next" id="nextBtn">下一步：${STEPS[step + 1]} →</button>`;
+  $('#panel').innerHTML = h;
+}
+
+function renderSide() {
+  const picked = PROPS.filter(p => S.props.includes(p.id));
+  const tags = [S.業態, S.風格.join('、'), S.角度, S.比例, S.光調, S.套餐, S.光線, S.故事].filter(Boolean).join('｜');
+  const warns = [];
+  if (!picked.some(p => p.cat === '桌面')) warns.push('還沒選桌面。');
+  if (angle() && !angle().bg && picked.some(p => p.cat === '後景')) warns.push('高角度看不到後景，後景會被忽略。');
+  $('#side').innerHTML = `<h2 style="font-size:17px">已選 ${picked.length} 樣</h2><p class="sub">${esc(tags) || '還沒選業態和風格。'}</p>
+    ${CATS.filter(c => picked.some(p => p.cat === c)).map(c => `<div class="grp"><i style="background:${CAT_COLOR[c]}"></i>${c}<small>${picked.filter(p => p.cat === c).length}</small></div>` +
+      picked.filter(p => p.cat === c).map(p => `<div class="sel" style="--c:${CAT_COLOR[c]}"><span>${esc(p.name)}<small style="color:var(--muted)">｜${esc(p.style)}</small></span><button data-rm="${p.id}" aria-label="移除">✕</button></div>`).join('')).join('') || '<p class="sub">還沒挑東西。</p>'}
+    ${warns.map(w => `<div class="warn">${w}</div>`).join('')}
+    <div class="bar"><button id="reset">全部清空</button></div>`;
+}
+
+function renderNav() {
+  $('#nav').innerHTML = STEPS.map((s, i) => `<button class="${i === step ? 'on' : ''}" data-step="${i}">${'①②③④⑤⑥⑦⑧⑨⑩'[i]} ${s}</button>`).join('');
+}
+const render = () => { renderNav(); renderPanel(); renderSide(); save(); };
+
+// 組模擬圖提示詞：照 03_套餐提示詞 的寫法與共用結尾
+function buildPrompt(picked) {
+  const by = c => picked.filter(p => p.cat === c).map(p => p.name).join('、');
+  const a = angle(), light = CHOICES.光線.find(l => l.name === S.光線), story = CHOICES.故事.find(s => s.name === S.故事);
+  const tone = CHOICES.光調.find(t => t.name === S.光調), set = CHOICES.套餐.find(t => t.name === S.套餐);
+  const parts = ['商品攝影情境模擬圖，' + (S.風格.join('＋') || '') + '風格，主角是【' + (S.業態 || '主角品項') + '的主角品項】，放在畫面視覺中心。'];
+  if (by('桌面')) parts.push(`桌面：${by('桌面')}${a && !a.bg ? '，桌面充滿整個畫面，看不到牆面、桌緣或窗戶' : ''}。`);
+  if (by('布料')) parts.push(`布料：${by('布料')}，自然皺摺。`);
+  if (by('後景') && (!a || a.bg)) parts.push(`後景：${by('後景')}，略為失焦。`);
+  const props = ['容器', '餐具', '軟裝', '墊高'].map(by).filter(Boolean).join('、');
+  if (props) parts.push(`道具：${props}，每樣都小、不搶主角，畫面飽滿但有秩序，四角有小物收邊。`);
+  if (set && set.prompt) parts.push(`${set.prompt}。`);
+  if (tone) parts.push(`${tone.prompt}。`);
+  if (light) parts.push(`光線：${light.prompt}。`);
+  if (story && story.prompt) parts.push(`${story.prompt}。`);
+  if (a) parts.push(`鏡頭：約 ${a.deg} 度${a.deg >= 90 ? '正俯拍' : '俯角'}，中長焦無變形，${ratioWord(S.比例)}。`);
+  else if (S.比例) parts.push(`畫面比例：${ratioWord(S.比例)}。`);
+  parts.push('如果畫面有飲料，只有一杯，而且必須是店家有賣的。包裝與道具上不要出現任何文字、logo 或圖案。不要人物、不要人臉。所有物件的陰影朝同一個方向。');
+  return parts.join('\n');
+}
+
+// 給 Claude 的工作單：一段貼上就能報價、生圖的文字
+function buildJob(subj) {
+  const picked = PROPS.filter(p => S.props.includes(p.id));
+  const lines = ['【貓眼道具選物｜生圖工作單】',
+    `模式：${subj ? 'B 路線：客戶主體照重畫（照片附在這則訊息；店家已書面同意）' : '只要模擬圖（不放客戶主體）'}`,
+    `業態／風格：${S.業態 || '未選'}｜${S.風格.join('＋') || '不限'}`,
+    `比例：${S.比例 || '未選（預設 4:5）'}`,
+    `光調／組合：${[S.光調, S.套餐].filter(Boolean).join('｜') || '未選'}`,
+    `角度／光線／故事：${[S.角度, S.光線, S.故事].filter(Boolean).join('｜') || '未選'}`,
+    `道具（${picked.length} 樣）：${picked.map(p => p.name).join('、') || '無'}`,
+    '', '提示詞：', $('#prompt').value, '',
+    '請照作業規則：先報價等我回 k；' + (subj ? '出圖後做三道鎖對照驗收頁；' : '') + '出圖要過鐵則 11 角度檢查與基準 18 條（作業規則第九節）。'];
+  return lines.join('\n');
+}
+
+function renderSheet() {
+  const picked = PROPS.filter(p => S.props.includes(p.id));
+  const sur = picked.filter(p => ['桌面', '布料', '後景'].includes(p.cat)), rest = picked.filter(p => !sur.includes(p));
+  const today = new Date().toISOString().slice(0, 10);
+  const block = (title, list, start) => list.length ? `<h3>${title}</h3><div class="items">${list.map((p, i) =>
+    `<div>${thumb(p)}<div style="margin-top:6px"><span class="n">${start + i + 1}</span>${esc(p.name)}<small>${esc(p.size)}｜${esc(p.style)}｜${p.status}</small></div></div>`).join('')}</div>` : '';
+  $('#sheetWrap').innerHTML = `<div id="sheet">
+    <div class="bar noprint"><button id="back">← 回去改</button><button onclick="print()">列印／存 PDF</button><button id="copy">複製提示詞</button></div>
+    <p style="letter-spacing:.2em;color:var(--muted);font-size:12px;margin:0">CATEYES STUDIO ・ PROP LIST ・ ${today}</p>
+    <h2 style="font-size:24px;margin:6px 0">${esc(S.業態 || '未命名')}｜${esc(S.風格.join('＋') || '不限風格')}</h2>
+    <p class="sub">${esc([S.角度, S.比例, S.光調, S.套餐, S.光線, S.故事].filter(Boolean).join('｜'))}</p>
+    <div class="mock"><img src="img/mock.jpg" style="width:100%;height:100%;object-fit:cover;border-radius:6px" alt="模擬圖：把下方提示詞貼給 Claude，報價確認後生成，存成 img/mock.jpg 就會顯示在這裡" onerror="this.replaceWith(this.alt)"></div>
+    <p class="sub" style="font-size:12px">模擬圖｜依本清單生成，實際拍攝以實物為準。道具圖為 AI 生成，拍攝前請確認實物。</p>
+    ${block('桌面・布料・後景', sur, 0)}${block('容器・餐具・軟裝・墊高', rest, sur.length)}
+    <div class="noprint">
+      <h3>送給 Claude 生圖（半自動）</h3>
+      <p class="sub">照片只會留在這支手機／電腦的瀏覽器裡，不會上傳到網站。</p>
+      <label class="tog"><input type="radio" name="mode" value="mock" checked> 只要模擬圖（不放客戶的主體）</label><br>
+      <label class="tog"><input type="radio" name="mode" value="subject"> 要放客戶的主體照片（B 路線：重畫＋三道鎖）</label>
+      <div id="subjectBox" hidden>
+        <input type="file" id="subjectFile" accept="image/*">
+        <img id="subjectPreview" alt="主體照預覽" hidden style="max-width:220px;border-radius:6px;margin:8px 0;display:block">
+        <label class="tog"><input type="checkbox" id="consent"> 店家已書面同意照片上傳到生圖服務（交付規則 1）</label>
+      </div>
+      <div class="bar"><button id="copyJob">① 複製工作單</button></div>
+      <p class="sub">② 回到 Claude 對話，貼上工作單${'，並把主體照片拖進對話'}；③ Claude 報價，你回「k」才會生圖。</p>
+      <h3>模擬圖提示詞（已照共用結尾組好，送出前再校對一次）</h3>
+      <textarea id="prompt">${esc(buildPrompt(picked))}</textarea>
+    </div>
+    <p class="sub" style="margin-top:24px">貓眼影像 CATEYES STUDIO　共 ${picked.length} 樣道具</p></div>`;
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-k],[data-id],[data-step],[data-rm],#nextBtn,#finish,#back,#reset,#copy,#copyJob');
+  if (!t) return;
+  if (t.dataset.k) {
+    const k = t.dataset.k, v = t.dataset.v;
+    if (t.dataset.m) S[k] = S[k].includes(v) ? S[k].filter(x => x !== v) : [...S[k], v];
+    else S[k] = S[k] === v ? '' : v;
+  } else if (t.dataset.id) { const id = t.dataset.id; S.props = S.props.includes(id) ? S.props.filter(x => x !== id) : [...S.props, id]; }
+  else if (t.dataset.step) { step = +t.dataset.step; $('#app').hidden = false; $('#sheetWrap').hidden = true; }
+  else if (t.dataset.rm) S.props = S.props.filter(x => x !== t.dataset.rm);
+  else if (t.id === 'nextBtn') { step++; scrollTo(0, 0); }
+  else if (t.id === 'reset') { if (confirm('確定全部清空？')) S = blank(); }
+  else if (t.id === 'finish') { renderSheet(); $('#app').hidden = true; $('#sheetWrap').hidden = false; scrollTo(0, 0); return; }
+  else if (t.id === 'back') { $('#app').hidden = false; $('#sheetWrap').hidden = true; return; }
+  else if (t.id === 'copyJob') {
+    const subj = document.querySelector('input[name=mode]:checked').value === 'subject';
+    if (subj && !$('#subjectFile').files.length) { alert('請先選主體照片，或改選「只要模擬圖」。'); return; }
+    if (subj && !$('#consent').checked) { alert('要先取得店家書面同意，才能把客戶照片送去生圖（交付規則 1）。'); return; }
+    navigator.clipboard.writeText(buildJob(subj)).then(() => t.textContent = '已複製 ✓ 回對話貼上');
+    return;
+  }
+  else if (t.id === 'copy') { navigator.clipboard.writeText($('#prompt').value).then(() => t.textContent = '已複製 ✓'); return; }
+  render();
+});
+document.addEventListener('change', e => {
+  if (e.target.id === 'all') { showAll = e.target.checked; renderPanel(); }
+  if (e.target.name === 'mode') $('#subjectBox').hidden = e.target.value !== 'subject';
+  if (e.target.id === 'subjectFile' && e.target.files[0]) { const im = $('#subjectPreview'); im.src = URL.createObjectURL(e.target.files[0]); im.hidden = false; }
+});
+$('#search').addEventListener('input', e => { query = e.target.value.trim(); render(); });
+render();
+</script>
+</body>
+</html>
