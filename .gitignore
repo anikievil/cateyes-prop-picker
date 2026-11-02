@@ -2,3 +2,6 @@
 .DS_Store
 *.bak
 待重生_*.jpg
+暫存/
+_bad_*
+*.bak_*

@@ -149,10 +149,10 @@ const save = () => { try { localStorage.setItem('propPick', JSON.stringify(S)) }
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // 已選清單分組用的顏色（一類一色）
-const CAT_COLOR = { 桌面: '#8b6b4a', 布料: '#c9a46a', 後景: '#7a8fa3', 容器: '#6f9a7a', 餐具: '#9a8f86', 軟裝: '#c27b6b', 墊高: '#8f7aa8' };
+const CAT_COLOR = { 桌面: '#8b6b4a', 布料: '#c9a46a', 後景: '#7a8fa3', 容器: '#6f9a7a', 餐具: '#9a8f86', 軟裝: '#c27b6b', 墊高: '#8f7aa8', 食材: '#a8894a' };
 const ZOOM = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
 const level = () => CHOICES.構圖.find(l => l.name === S.構圖);
-const lvInfo = () => { const l = level(); return diagram() + '<div>' + (l ? `<b>等級 ${l.name}｜${l.note}</b><p class="sub" style="margin:6px 0 0">${l.prompt}。${l.max < 99 ? `小道具（容器、餐具、軟裝、墊高）建議最多 ${l.max} 樣。` : ''}</p>` : '<b>還沒選</b><p class="sub" style="margin:6px 0 0">拉動上面的拉霸，或點數字。</p>') + '</div>'; };
+const lvInfo = () => { const l = level(); return diagram() + '<div>' + (l ? `<b>等級 ${l.name}｜${l.note}</b><p class="sub" style="margin:6px 0 0">${l.prompt}。${l.max < 99 ? `小道具（容器、餐具、軟裝、墊高、食材）建議最多 ${l.max} 樣。` : ''}</p>` : '<b>還沒選</b><p class="sub" style="margin:6px 0 0">拉動上面的拉霸，或點數字。</p>') + '</div>'; };
 const pick = k => CHOICES[k].find(o => o.name === S[k]);
 // 示意圖：直式框裡畫留白區、前景、主角（大橢圓）、副菜（中橢圓）、道具（小圓），跟著等級、位置、留白、層次即時變
 // 空間範本示意圖（2:3 直式框）：牆面、桌面、主角與配角的位置
@@ -238,7 +238,7 @@ function renderSide() {
   const warns = [];
   if (!picked.some(p => p.cat === '桌面')) warns.push('還沒選桌面。');
   if (angle() && !angle().bg && picked.some(p => p.cat === '後景')) warns.push('高角度看不到後景，後景會被忽略。');
-  const small = picked.filter(p => ['容器', '餐具', '軟裝', '墊高'].includes(p.cat)).length, lv = level();
+  const small = picked.filter(p => ['容器', '餐具', '軟裝', '墊高', '食材'].includes(p.cat)).length, lv = level();
   if (lv && small > lv.max) warns.push(`構圖等級 ${lv.name} 建議小道具最多 ${lv.max} 樣，你選了 ${small} 樣。`);
   if (!S.空間 && lv && S.套餐 === '一主二副' && +lv.name < 6) warns.push('一主二副對應構圖等級 6（或 7、8），現在的等級只放得下一道菜。');
   if (S.留白 && S.留白 !== '不留白' && S.位置 === '出血大特寫') warns.push('出血大特寫和留白放字互相衝突，建議擇一。');
@@ -343,7 +343,7 @@ function buildPrompt(picked) {
   if (by('桌面')) parts.push(`桌面：${by('桌面')}${a && !a.bg ? '，桌面充滿整個畫面，看不到牆面、桌緣或窗戶' : ''}。`);
   if (by('布料')) parts.push(`布料：${by('布料')}，自然皺摺。`);
   if (by('後景') && (!a || a.bg)) parts.push(`後景：${by('後景')}，略為失焦。`);
-  const props = ['容器', '餐具', '軟裝', '墊高'].map(by).filter(Boolean).join('、');
+  const props = ['容器', '餐具', '軟裝', '墊高', '食材'].map(by).filter(Boolean).join('、');
   if (props) parts.push(`道具：${props}，每樣都小、不搶主角，畫面飽滿但有秩序，四角有小物收邊。`);
   if (set && set.prompt) parts.push(`${set.prompt}。`);
   if (tone) parts.push(`${tone.prompt}。`);
@@ -391,7 +391,7 @@ function renderSheet() {
     <p class="sub">${esc([S.角度, S.比例, S.光調, S.套餐, S.構圖 && '構圖 ' + S.構圖, S.位置, S.留白, S.層次, S.光線, S.故事].filter(Boolean).join('｜'))}</p>
     <div class="mock"><img src="img/mock.jpg" style="width:100%;height:100%;object-fit:cover;border-radius:6px" alt="模擬圖：把下方提示詞貼給 Claude，報價確認後生成，存成 img/mock.jpg 就會顯示在這裡" onerror="this.replaceWith(this.alt)"></div>
     <p class="sub" style="font-size:12px">模擬圖｜依本清單生成，實際拍攝以實物為準。道具圖為 AI 生成，拍攝前請確認實物。</p>
-    ${block('桌面・布料・後景', sur, 0)}${block('容器・餐具・軟裝・墊高', rest, sur.length)}
+    ${block('桌面・布料・後景', sur, 0)}${block('容器・餐具・軟裝・墊高・食材', rest, sur.length)}
     <div class="noprint">
       <h3>送給 Claude 生圖（半自動）</h3>
       <p class="sub">照片只會留在這支手機／電腦的瀏覽器裡，不會上傳到網站。</p>
