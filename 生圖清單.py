@@ -19,6 +19,9 @@ def prompt(p):
     return base(p).replace('風格道具，', '風格道具' + TW + '，', 1) if p['style'].startswith('節慶') else base(p)
 
 def base(p):
+    if p['cat'] == '後景' and '失焦' in p['name']:  # 失焦場景後景（11-03 使用者喜歡春日野餐的樹蔭綠意失焦）：有前後層次的環境，整張模糊
+        return (f"{p['name']}：{STYLE_WORD.get(p['style'], p['style'])}風格的環境後景照片，大光圈淺景深、整張柔和失焦，只有色塊、光影與光點，沒有清楚輪廓的物件，"
+                f"有前後層次與空間深度，當作合成餐飲照用的後景，畫面下緣不要出現桌面，{TASTE}，無文字、無人物、無 logo。")
     if p['cat'] in ('桌面', '後景'):  # 材質類：拍滿版平面材質，不是單一物件
         return f"{p['name']}的材質特寫照片，平面填滿整個畫面，柔和均勻光線，{p['style']}風格，{TASTE}，無文字、無物件、無人物。"
     if p['cat'] == '布料':  # 不寫清楚 AI 會畫成袋子、髮圈、燈籠（10-30 實測）
