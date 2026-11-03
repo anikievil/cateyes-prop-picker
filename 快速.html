@@ -49,7 +49,7 @@ textarea{width:100%;min-height:180px;font:13px/1.6 inherit;padding:10px;border:1
 .bar button:disabled{opacity:.4}
 .qb{position:relative;width:100%;background:#e6dccb;border-radius:8px;overflow:hidden;user-select:none;touch-action:none;margin:8px 0}
 .qb .wall{position:absolute;left:0;right:0;top:0;background:#d9d6d2}
-.qb .it{position:absolute;transform:translate(-50%,-50%) rotate(var(--r,0deg));cursor:grab;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;text-align:center;color:#333}
+.qb .it{position:absolute;transform:translate(-50%,-50%) rotate(var(--r,0deg)) scaleY(var(--sy,1));cursor:grab;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;text-align:center;color:#333}
 .qb .it.dish{background:#fff9;border:2px dashed #7a6a55;aspect-ratio:1/.55}
 .qb .it.prop{aspect-ratio:1;background-size:cover;background-position:center;border:1px solid #fff8;box-shadow:0 1px 4px #0003}
 .qb .it.prop span{background:#000a;color:#fff;border-radius:4px;padding:1px 4px;font-size:10px;position:absolute;bottom:2px;left:2px;right:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -86,7 +86,7 @@ textarea{width:100%;min-height:180px;font:13px/1.6 inherit;padding:10px;border:1
   <p class="props" id="propsLine"></p>
   <div id="cutsBox"></div>
   <div id="qb"></div>
-  <div class="qbtools"><span id="qbSel">點一下選物件，再用右邊按鈕轉／縮放；拖＝移動；觸控板雙指捏＝縮放、Shift＋雙指滑＝旋轉；紅線＝對焦（可拖）。</span><button data-qb="r-">↺ 15°</button><button data-qb="r+">↻ 15°</button><button data-qb="w-">小</button><button data-qb="w+">大</button><button id="qbReset">重新排列</button></div>
+  <div class="qbtools"><span id="qbSel">點一下選物件，再用右邊按鈕轉／縮放；拖＝移動；觸控板雙指捏＝縮放、Shift＋雙指滑＝旋轉；紅線＝對焦（可拖）。</span><button data-qb="r-">↺ 15°</button><button data-qb="r+">↻ 15°</button><button data-qb="w-">小</button><button data-qb="w+">大</button><button data-qb="y-">扁（俯角↓）</button><button data-qb="y+">高（俯角↑）</button><span id="qbAng" class="sub" style="margin:0"></span><button id="qbReset">重新排列</button></div>
   <textarea id="job" readonly></textarea>
 </section>
 </main>
@@ -175,13 +175,19 @@ function cutsHtml() {
     return `<p class="sub" style="margin:6px 0 2px"><b>${esc(d)}</b>（${list.length} 張）</p><div class="cuts">${list.map(c => `<button data-cut="${esc(d)}" data-id="${c.id}" class="${Q.cut[d] === c.id ? 'on' : ''} ${c.diff > 5 ? 'far' : ''}"><img src="本機/縮圖/${c.id}.jpg" loading="lazy"><small>${c.id}｜${Math.round(c.angle)}°${c.diff > 5 ? '（差 ' + Math.round(c.diff) + '°）' : ''}${c.broken ? '｜有缺' : ''}${c.fixed ? '｜修補版' : ''}</small></button>`).join('')}</div>`;
   }).join('');
 }
+function angHint() {   // 選中的菜若有去背角度，顯示壓縮後的換算角度
+  const U = Q.版面, el = $('#qbAng'); if (!el) return; el.textContent = '';
+  if (!U || !U.sel || !U.it[U.sel]) return; const cid = Q.cut[U.sel]; const c = CUT.find(x => x.id === cid); const sy = U.it[U.sel].sy || 1;
+  if (c) { const na = Math.asin(Math.min(1, Math.sin(c.angle * Math.PI / 180) * sy)) * 180 / Math.PI; el.textContent = `${U.sel}：原 ${Math.round(c.angle)}° × 高度比 ${sy.toFixed(2)} ≈ ${Math.round(na)}°`; }
+  else if (sy !== 1) el.textContent = `${U.sel}：高度比 ${sy.toFixed(2)}`;
+}
 function boardHtml(b, props) {
   if (!b) return '';
   const use = USES.find(u => u.name === Q.use), r = { '9:16': 16 / 9, '2:3': 1.5, '4:5': 1.25, '3:2': 2 / 3 }[(use || {}).ratio] || 1.25;
   const sp = CHOICES.空間.find(t => t.name === Q.space), wall = (sp || {}).wall || 0;
   const byName = Object.fromEntries(props.map(p => [p.name, p]));
   return `<div class="qb" id="qbc" style="aspect-ratio:1/${r}">${wall ? `<div class="wall" style="height:${wall * 100}%"></div>` : ''}
-    ${Object.entries(b.it).sort((a, c) => a[1].y - c[1].y).map(([k, v]) => { const p = byName[k]; const cid = !p && Q.cut[k]; return `<div class="it ${p || cid ? 'prop' : 'dish'}${(Q.版面 || {}).sel === k ? ' on' : ''}" data-k="${esc(k)}" style="left:${v.x * 100}%;top:${v.y * 100}%;width:${v.w * 100}%;--r:${v.r || 0}deg;${p ? `background-image:url('img/${p.id}.jpg')` : cid ? `background-image:url('本機/縮圖/${cid}.jpg');background-size:contain;background-repeat:no-repeat;background-color:transparent;border:0;box-shadow:none` : ''}">${p || cid ? `<span>${esc(k)}</span>` : esc(k)}</div>`; }).join('')}
+    ${Object.entries(b.it).sort((a, c) => a[1].y - c[1].y).map(([k, v]) => { const p = byName[k]; const cid = !p && Q.cut[k]; return `<div class="it ${p || cid ? 'prop' : 'dish'}${(Q.版面 || {}).sel === k ? ' on' : ''}" data-k="${esc(k)}" style="left:${v.x * 100}%;top:${v.y * 100}%;width:${v.w * 100}%;--r:${v.r || 0}deg;--sy:${v.sy || 1};${p ? `background-image:url('img/${p.id}.jpg')` : cid ? `background-image:url('本機/縮圖/${cid}.jpg');background-size:contain;background-repeat:no-repeat;background-color:transparent;border:0;box-shadow:none` : ''}">${p || cid ? `<span>${esc(k)}</span>` : esc(k)}</div>`; }).join('')}
     <div class="fl" id="qbf" style="top:${b.focus * 100}%"></div></div>`;
 }
 (() => {   // 畫布互動：滑鼠＋觸控；拖完存 Q.版面 再重畫工作單
@@ -234,7 +240,7 @@ function render() {
   [['h1', Q.dishes.length], ['h2', Q.tone], ['h3', Q.space], ['h4', Q.use]].forEach(([id, v]) => $('#' + id).classList.toggle('ok', !!(v && v.length !== 0)));
   const ready = Q.dishes.length && Q.tone && Q.space && Q.use;
   $('#cpJob').disabled = $('#cpPrompt').disabled = !ready; $('#out').classList.toggle('show', !!ready);
-  if (ready) { const ps = pickProps(), pr = buildPrompt(ps); $('#job').value = job(ps, pr); $('#job').dataset.prompt = pr; $('#cutsBox').innerHTML = cutsHtml(); $('#qb').innerHTML = boardHtml(board(ps), ps); $('#propsLine').textContent = `自動帶入 ${ps.length} 樣配件：${ps.map(p => p.name).join('、')}`; }
+  if (ready) { const ps = pickProps(), pr = buildPrompt(ps); $('#job').value = job(ps, pr); $('#job').dataset.prompt = pr; $('#cutsBox').innerHTML = cutsHtml(); $('#qb').innerHTML = boardHtml(board(ps), ps); angHint(); $('#propsLine').textContent = `自動帶入 ${ps.length} 樣配件：${ps.map(p => p.name).join('、')}`; }
   $('#cpJob').textContent = ready ? '複製工作單' : `還差 ${[!Q.dishes.length && '選菜', !Q.tone && '光調', !Q.space && '空間', !Q.use && '用途'].filter(Boolean).join('、')}`;
   save();
 }
@@ -249,7 +255,7 @@ document.addEventListener('click', e => {
   else if (b.id === 'qbReset') Q.版面 = null;
   else if (b.dataset.cut) { const d = b.dataset.cut; Q.cut[d] = Q.cut[d] === b.dataset.id ? null : b.dataset.id; }
   else if (b.dataset.qb) { const U = Q.版面 && Q.版面.space === Q.space ? Q.版面 : null; const v = U && U.sel && U.it[U.sel]; if (!v) { $('#qbSel').textContent = '先在畫布點一下要調的物件'; return; }
-    const a = b.dataset.qb; if (a[0] === 'r') v.r = ((v.r || 0) + (a[1] === '+' ? 15 : -15) + 360) % 360; else v.w = +Math.max(.05, Math.min(1.5, v.w + (a[1] === '+' ? .04 : -.04))).toFixed(3); }
+    const a = b.dataset.qb; if (a[0] === 'r') v.r = ((v.r || 0) + (a[1] === '+' ? 15 : -15) + 360) % 360; else if (a[0] === 'y') v.sy = +Math.max(.6, Math.min(1.4, (v.sy || 1) + (a[1] === '+' ? .05 : -.05))).toFixed(2); else v.w = +Math.max(.05, Math.min(1.5, v.w + (a[1] === '+' ? .04 : -.04))).toFixed(3); }
   else if (b.id === 'cpJob' || b.id === 'cpPrompt') { const txt = b.id === 'cpJob' ? $('#job').value : $('#job').dataset.prompt; navigator.clipboard.writeText(txt).then(() => { b.textContent = '已複製 ✓'; setTimeout(render, 1500); }, () => prompt('複製這段：', txt)); return; }
   else return;
   render();
