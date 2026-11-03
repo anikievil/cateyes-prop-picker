@@ -116,7 +116,8 @@ let Q = { dishes: [], tone: '', space: '', spaceAuto: true, use: '', drink: '不
 let CUT = [];
 fetch('本機/去背.json').then(r => r.ok ? r.json() : []).then(j => { CUT = j; render(); }).catch(() => {});
 const norm = n => n.replace(/（.*?）/g, '').replace(/^燙/, '').replace(/^鵝油時蔬_/, '');
-const cutsFor = d => CUT.filter(c => { const a = norm(d), b = norm(c.name); return a === b || a.includes(b) || b.includes(a); });
+const catOf = d => /湯$/.test(d) ? '湯' : /麵|飯|冬粉/.test(d) ? '主食' : /切盤/.test(d) ? '切盤' : '小菜';   // 用菜名猜分類，避免「當歸鵝血糕湯」對到「鵝血糕」小菜
+const cutsFor = d => CUT.filter(c => { const a = norm(d), b = norm(c.name); if (a === b) return true; if (c.cat !== catOf(d)) return false; return a.includes(b) || b.includes(a); });
 try { Q = { ...Q, ...JSON.parse(localStorage.getItem('quickPick') || '{}') }; Q.cut = Q.cut || {}; } catch (e) {}
 const save = () => { try { localStorage.setItem('quickPick', JSON.stringify(Q)) } catch (e) {} };
 if (Q.space && !CHOICES.空間.some(t => t.name === Q.space)) { Q.space = ''; Q.spaceAuto = true; }   // 舊版範本名稱作廢
