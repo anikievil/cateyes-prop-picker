@@ -63,6 +63,15 @@ h3{font-size:15px;margin:14px 0 6px}
 .actions button{flex:1;border-radius:10px;padding:12px;font-size:15px;cursor:pointer;font-family:inherit;border:1px solid var(--ink);background:#fff;color:var(--ink)}
 .actions button.pri{background:var(--ink);color:#fff}
 #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 16px;border-radius:999px;font-size:14px;z-index:30;display:none}
+.refs{display:flex;flex-direction:column;gap:8px}
+.ref{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.ref .rt{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.ref select{width:100%;font:inherit;font-size:14px;padding:6px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.ref .rn{display:flex;gap:6px}
+.ref .rn button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px;font:inherit;font-size:13px;cursor:pointer}
+.ref .rn button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.ref .rimg{width:64px;height:80px;flex:none;border-radius:8px;overflow:hidden;background:#e4e0d8}
+.ref .rimg img{width:100%;height:100%;object-fit:cover;display:block}
 </style>
 </head>
 <body>
@@ -83,6 +92,8 @@ h3{font-size:15px;margin:14px 0 6px}
     <div class="tabs" id="pTabs"></div>
     <h3>這組道具（勾選要帶走的）</h3>
     <div id="pRows"></div>
+    <h3>參考用途</h3>
+    <div class="refs" id="pRefs"></div>
   </div>
   <div class="actions"><button id="bCopy">複製道具清單</button><button id="bAdd">整組加入籃子</button><button class="pri" id="bUse">用這組排版</button></div>
 </div>
@@ -106,7 +117,7 @@ const $ = id => document.getElementById(id);
 const byId = {}; PROPS.forEach(p => byId[p.id] = p);
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch (e) { return d } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch (e) {} };
-let CARDS = [], hits = lsGet('styleWallHits', {}), filter = '全部', cur = null, curN = 1, checked = {};
+let ref = { light: '', dish: '' }, CARDS = [], hits = lsGet('styleWallHits', {}), filter = '全部', cur = null, curN = 1, checked = {};
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const pname = id => byId[id] ? byId[id].name : id;
 const psize = id => byId[id] && byId[id].size ? byId[id].size : '';
@@ -146,6 +157,8 @@ function showCard(){
   $('pTabs').innerHTML = l.map((_, i) => `<button data-n="${i+1}" class="${i+1===curN?'on':''}">場景 ${i+1}</button>`).join('');
   $('pImg').classList.remove('miss');
   const im = $('pImg').querySelector('img'); im.src = 'img/card/' + c.id + '.jpg';
+  if (!ref.light || !ref.dish || ref.cardKey !== c.id) { ref = { light: c.id, dish: c.id, cardKey: c.id }; }
+  renderRefs();
   checked = {};
   let html = '';
   PART_ORDER.forEach(p => (c.parts[p] || []).forEach((id, i) => {
@@ -155,6 +168,16 @@ function showCard(){
   $('pRows').innerHTML = html;
   $('pRows').querySelectorAll('.th img').forEach(missHandler);
 }
+const REF_LBL = { light: '光感參考卡', dish: '器皿參考卡' };
+function renderRefs(){
+  $('pRefs').innerHTML = ['light', 'dish'].map(w => {
+    const id = ref[w], i = id.lastIndexOf('-'), k = id.slice(0, i), n = id.slice(i + 1), cnt = byStyle(k).length;
+    return `<div class="ref"><div class="rt"><b>${REF_LBL[w]}</b><select data-w="${w}">${styleKeys().map(x => `<option value="${x}"${x === k ? ' selected' : ''}>${esc(STYLES[x])}</option>`).join('')}</select><div class="rn">${byStyle(k).map((c, j) => `<button data-w="${w}" data-id="${c.id}" class="${c.id === id ? 'on' : ''}">場景 ${j + 1}</button>`).join('')}</div></div><div class="rimg"><img alt="${REF_LBL[w]} ${esc(id)}" src="img/card/${id}.jpg"></div></div>`;
+  }).join('');
+  $('pRefs').querySelectorAll('.rimg img').forEach(m => m.addEventListener('error', () => m.style.visibility = 'hidden'));
+}
+$('pRefs').onchange = e => { const s = e.target.closest('select'); if (!s) return; ref[s.dataset.w] = byStyle(s.value)[0].id; renderRefs(); };
+$('pRefs').onclick = e => { const b = e.target.closest('button'); if (!b) return; ref[b.dataset.w] = b.dataset.id; renderRefs(); };
 function picked(){ return [...$('pRows').querySelectorAll('input:checked')].map(i => i.dataset.id); }
 function toast(t){ const e = $('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => e.style.display = 'none', 1800); }
 function copyText(t){
@@ -180,6 +203,7 @@ $('bAdd').onclick = () => {
   if (!ids.length) { toast('請至少勾一項'); return; }
   const before = Basket.count();
   Basket.addMany(ids);
+  lsSet('styleWall', { style: cur, card: curCard().id, props: ids, light: ref.light, dish: ref.dish });
   toast('已加入籃子（新增 ' + (Basket.count() - before) + ' 件，共 ' + Basket.count() + ' 件）');
 };
 $('bUse').onclick = () => {
@@ -190,7 +214,7 @@ $('bUse').onclick = () => {
   let S = lsGet('propPick', {}); if (!S || typeof S !== 'object') S = {};
   S['風格'] = [STYLES[cur]];
   lsSet('propPick', S);
-  lsSet('styleWall', { style: cur, card: c.id, props: ids });
+  lsSet('styleWall', { style: cur, card: c.id, props: ids, light: ref.light, dish: ref.dish });
   location.href = '快速.html';
 };
 fetch('風格卡.json').then(r => r.json()).then(d => { CARDS = d; renderFilters(); renderGrid(); })
