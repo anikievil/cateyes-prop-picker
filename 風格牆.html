@@ -84,10 +84,11 @@ h3{font-size:15px;margin:14px 0 6px}
     <h3>這組道具（勾選要帶走的）</h3>
     <div id="pRows"></div>
   </div>
-  <div class="actions"><button id="bCopy">複製道具清單</button><button class="pri" id="bUse">用這組排版</button></div>
+  <div class="actions"><button id="bCopy">複製道具清單</button><button id="bAdd">整組加入籃子</button><button class="pri" id="bUse">用這組排版</button></div>
 </div>
 <div id="toast"></div>
 <script src="props.js"></script>
+<script src="籃子.js"></script>
 <script>
 const GROUPS = {
   '台式':['taiwan','bubbletea','goose','rechao','teahouse'],
@@ -174,12 +175,20 @@ $('bCopy').onclick = () => {
   }));
   copyText(lines.join('\n')).then(() => toast('已複製 ' + lines.length + ' 項'), () => toast('複製失敗，請手動選取'));
 };
+$('bAdd').onclick = () => {
+  const ids = picked();
+  if (!ids.length) { toast('請至少勾一項'); return; }
+  const before = Basket.count();
+  Basket.addMany(ids);
+  toast('已加入籃子（新增 ' + (Basket.count() - before) + ' 件，共 ' + Basket.count() + ' 件）');
+};
 $('bUse').onclick = () => {
   const ids = picked();
   if (!ids.length) { toast('請至少勾一項'); return; }
   const c = curCard();
+  Basket.addMany(ids);
   let S = lsGet('propPick', {}); if (!S || typeof S !== 'object') S = {};
-  S.props = ids; S['風格'] = [STYLES[cur]];
+  S['風格'] = [STYLES[cur]];
   lsSet('propPick', S);
   lsSet('styleWall', { style: cur, card: c.id, props: ids });
   location.href = '快速.html';

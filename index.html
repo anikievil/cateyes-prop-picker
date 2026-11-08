@@ -170,6 +170,7 @@ textarea{width:100%;min-height:150px;font:14px/1.6 inherit;padding:10px;border:1
 <div id="sheetWrap" hidden></div>
 <script src="props.js"></script>
 <script src="palette.js"></script>
+<script src="籃子.js"></script>
 <script>
 // 狀態只存在這台裝置（localStorage），清掉也不影響使用
 const STEPS = ['業態・風格', '角度・比例', '光調・故事', '空間・構圖', ...CATS];
@@ -180,7 +181,9 @@ const blank = () => ({ 業態: '', 風格: [], 角度: '', 比例: '', 光調: '
 let S = blank(), peek = '', lastWarns = [], step = 0, showAll = false, query = '';
 try { S = { ...S, ...JSON.parse(localStorage.getItem('propPick') || '{}') } } catch (e) {}
 if (S.空間 && !CHOICES.空間.some(t => t.name === S.空間)) { S.空間 = ''; S.版面 = null; }   // 舊版範本名稱作廢
-const save = () => { try { localStorage.setItem('propPick', JSON.stringify(S)) } catch (e) {} };
+const save = () => { try { localStorage.setItem('propPick', JSON.stringify(S)) } catch (e) {} window.Basket && Basket.refresh(); };
+// 籃子從別處改了（抽屜加／刪、風格牆）：把 S.props 換成籃子內容再重畫
+window.addEventListener('basket', e => { if (e.detail && e.detail.src === 'save') return; S.props = Basket.list(); try { render(); } catch (err) {} });
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // 已選清單分組用的顏色（一類一色）

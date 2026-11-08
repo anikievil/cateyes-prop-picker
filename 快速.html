@@ -94,6 +94,7 @@ textarea{width:100%;min-height:180px;font:13px/1.6 inherit;padding:10px;border:1
 <div class="bar"><button id="cpPrompt" disabled>複製提示詞</button><button class="pri" id="cpJob" disabled>複製工作單</button></div>
 
 <script src="props.js"></script>
+<script src="籃子.js"></script>
 <script>
 // 快速版：選菜→光調→空間→用途，自動帶配件、比例、構圖，出提示詞與工作單；選擇存在這台裝置
 const MENU = {   // 鵝樂香菜單（給店家確認/菜單與確認答案.md）
@@ -138,10 +139,8 @@ function pickProps() {
   if (Q.drink === '一杯啤酒') names.push('空玻璃啤酒杯（無字）'); if (Q.drink === '一杯茶') names.push('空玻璃茶杯');
   const seen = new Set();
   let ps = names.filter(n => !seen.has(n) && seen.add(n)).map(n => PROPS.find(p => p.name === n && p.style === '鵝肉小吃') || PROPS.find(p => p.name === n)).filter(Boolean);
-  if (Q.wall && Q.wall.props) {   // 風格牆帶入的整組排最前面（桌面／布料／後景是場景，不佔道具名額）
-    const wp = Q.wall.props.map(id => PROPS.find(p => p.id === id)).filter(p => p && !/桌面|布料|後景/.test(p.cat));
-    ps = [...wp, ...ps.filter(p => !wp.includes(p))];
-  }
+  const bp = Basket.list().map(id => PROPS.find(p => p.id === id)).filter(p => p && !/桌面|布料|後景/.test(p.cat));   // 籃內道具排最前面優先放（桌面／布料／後景是場景，不佔道具名額）
+  if (bp.length) ps = [...bp, ...ps.filter(p => !bp.includes(p))];
   const lv = CHOICES.構圖.find(l => l.name === (CHOICES.空間.find(s => s.name === Q.space) || {}).level);
   const max = lv ? Math.min(Math.max(lv.max, 5), 7) : 6;   // 照構圖等級控制數量，至少 5 樣（七組評分：太空）、最多 7 樣
   const drink = ps.filter(p => /杯/.test(p.name)); ps = ps.filter(p => !/杯/.test(p.name)).slice(0, max - drink.length);
@@ -239,7 +238,7 @@ function job(props, pr) {
     '', '提示詞：', pr, '', '請照作業規則：先報價等我回 k；出圖要過鐵則 11 角度檢查與基準 19 條（作業規則第九節）；菜用去背分類裡角度對的實拍圖。'].filter(l => l !== null).join('\n').replace(/\n{3,}/g, '\n\n');
 }
 function render() {
-  const wEl = $('#wall'); if (wEl) { if (Q.wall && Q.wall.props) { wEl.hidden = false; wEl.innerHTML = `風格牆帶入：<b>${esc(Q.wall.name || Q.wall.style)}</b> 整組 ${Q.wall.props.length} 件，排版時優先放這些 <button id="wallX" style="margin-left:auto;border:0;background:none;cursor:pointer">✕ 不用</button>`; $('#wallX').onclick = () => { delete Q.wall; save(); render(); }; } else wEl.hidden = true; }
+  const wEl = $('#wall'); if (wEl) { if (Basket.count()) { wEl.hidden = false; wEl.innerHTML = `籃子 ${Basket.count()} 件優先排版${Q.wall && (Q.wall.name || Q.wall.style) ? `（風格：<b>${esc(Q.wall.name || Q.wall.style)}</b>）` : ''} <button id="wallX" style="margin-left:auto;border:0;background:none;cursor:pointer">開籃子</button>`; $('#wallX').onclick = () => document.getElementById('bk-fab').click(); } else wEl.hidden = true; }
   $('#dishes').innerHTML = Object.entries(MENU).map(([g, list]) => `<div class="grp">${g}</div><div class="chips">${list.map(d => { const i = Q.dishes.indexOf(d); return `<button data-d="${esc(d)}" class="${i >= 0 ? 'on' : ''}">${i >= 0 ? `<b>${i + 1}</b>` : ''}${esc(d)}</button>`; }).join('')}</div>`).join('');
   $('#tone').innerHTML = CHOICES.光調.map(t => `<button data-t="${t.name}" class="${t.name === '亮調' ? 'lt' : 'dk'} ${Q.tone === t.name ? 'on' : ''}"><b>${Q.tone === t.name ? '✓ ' : ''}${t.name}</b><small>${t.note}</small></button>`).join('');
   if (Q.spaceAuto && Q.dishes.length) Q.space = spaceFor(Q.dishes[0]);   // 照主菜自動建議版型，自己點過就不再改
@@ -284,6 +283,7 @@ $('#toFull').addEventListener('click', e => {
   location.href = 'index.html';
 });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+window.addEventListener('basket', () => render());
 render();
 </script>
 </body>

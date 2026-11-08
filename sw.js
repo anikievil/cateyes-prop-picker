@@ -1,7 +1,7 @@
 // 離線快取：頁面與資料「先上網、失敗才用快取」（有網路時永遠拿到最新版）；道具圖「先用快取」（看過就能離線看）
 // 改了 index.html／props.js 不用動這裡；只有 SHELL 清單變了才要改 VER
-const VER = 'v4', SHELL = 'shell-' + VER, IMG = 'img-v1';
-const FILES = ['./', 'index.html', 'props.js', 'manifest.json', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'icon-512-maskable.png', 'favicon-32.png', '快速.html', 'manifest-quick.json', 'palette.js', 'colors.json', '風格範例.html'];
+const VER = 'v5', SHELL = 'shell-' + VER, IMG = 'img-v1';
+const FILES = ['./', 'index.html', 'props.js', 'manifest.json', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'icon-512-maskable.png', 'favicon-32.png', '快速.html', 'manifest-quick.json', 'palette.js', 'colors.json', '風格範例.html', '籃子.js'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(SHELL).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('shell-') && k !== SHELL).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
