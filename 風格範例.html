@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>貓眼道具選物｜風格搭配範例</title>
+<link rel="icon" href="favicon-32.png">
+<style>
+:root{--ink:#1d1b19;--paper:#f6f4f0;--card:#fff;--line:#e3ded6;--muted:#8a847b;--accent:#c9a46a;--warn:#fff4d6;--warn-line:#e8d39a}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{overflow-x:hidden}
+body{margin:0;font-family:"Noto Sans TC","PingFang TC",system-ui,sans-serif;background:var(--paper);color:var(--ink)}
+header{position:sticky;top:0;z-index:6;background:var(--ink);color:#fff;display:flex;gap:10px;align-items:center;padding:10px 16px;flex-wrap:wrap}
+header b{font-size:18px;white-space:nowrap}header b span{color:var(--accent)}
+header a{color:#ddd;font-size:13px;text-decoration:none;border:1px solid #555;border-radius:999px;padding:7px 12px;white-space:nowrap}
+header .sp{flex:1}
+#filter{position:sticky;top:56px;z-index:5;background:var(--paper);border-bottom:1px solid var(--line);display:flex;gap:6px;overflow-x:auto;padding:8px 16px;-webkit-overflow-scrolling:touch}
+#filter button{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:14px;cursor:pointer}
+#filter button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+main{max-width:1200px;margin:0 auto;padding:18px 16px 60px}
+h2{margin:0 0 4px;font-size:22px}
+.sub{color:var(--muted);margin:0 0 14px;font-size:14px}
+section.st{margin:0 0 40px;scroll-margin-top:110px}
+.sthead{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;border-top:3px solid var(--ink);padding-top:12px}
+.sthead .tx{flex:1 1 220px;min-width:0}
+.scene{flex:0 1 220px;width:220px;max-width:100%;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#e9e6e1;color:#9a948b;font-size:13px;display:flex;align-items:center;justify-content:center;text-align:center;border:1px dashed #cfc9bf}
+.scene img{width:100%;height:100%;object-fit:cover;display:block}
+.sets{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:16px;margin-top:12px}
+.set{background:var(--card);border-radius:12px;box-shadow:0 1px 3px #0002;padding:12px;min-width:0}
+.set h3{margin:0 0 2px;font-size:16px;border-left:4px solid var(--accent);padding-left:8px}
+.set .rule{margin:0 0 8px;font-size:12px;color:var(--muted)}
+.board{position:relative;aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:#d9d5ce}
+.board>img{position:absolute;object-fit:cover;display:block;background:#e9e6e1}
+.board .bg{inset:0;width:100%;height:100%;filter:brightness(.92)}
+.board .tb{left:0;bottom:0;width:100%;height:46%;box-shadow:0 -4px 10px #0003}
+.board .it{border:3px solid #fff;border-radius:8px;box-shadow:0 3px 8px #0005;aspect-ratio:1;height:auto}
+.dots{display:flex;gap:4px;margin:8px 0 6px}
+.dots i{flex:1;height:10px;border-radius:5px;border:1px solid #0002}
+ul.names{list-style:none;margin:0;padding:0;font-size:13px}
+ul.names li{display:flex;gap:6px;align-items:baseline;padding:2px 0;border-left:3px solid var(--c);padding-left:8px;margin:3px 0}
+ul.names small{color:var(--muted);flex:none;width:2.6em}
+.apply{display:inline-block;margin-top:8px;background:var(--ink);color:#fff;text-decoration:none;border-radius:999px;padding:9px 16px;font-size:14px}
+.empty{color:var(--muted);padding:30px 0}
+</style>
+</head>
+<body>
+<header>
+  <b>貓眼<span>風格範例</span></b>
+  <span class="sp"></span>
+  <a href="index.html">← 回道具選物</a>
+</header>
+<div id="filter"></div>
+<main>
+  <p class="sub">每個風格自動配 3 組搭配（規則固定，同一份資料每次結果一樣）。點「套用這組」會回到選物頁，並把這組道具加進已選清單。道具圖是 AI 生的，拍攝前要確認實物。</p>
+  <div id="list"></div>
+</main>
+<script src="props.js"></script>
+<script src="palette.js"></script>
+<script>
+// 實景範例圖：生好 img/scene/<風格key>.jpg 之後，把 key 加進這個清單就會顯示（沒加就顯示「尚未生成」，避免一直打 404）
+const SCENE_READY = [];
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const CAT_COLOR = { 桌面: '#8b6b4a', 布料: '#c9a46a', 後景: '#7a8fa3', 容器: '#6f9a7a', 餐具: '#9a8f86', 軟裝: '#c27b6b', 墊高: '#8f7aa8' };
+const sk = id => id.split('-')[0];
+const byId = (a, b) => (a.id < b.id ? -1 : 1);
+
+const RULES = [
+  { name: '同色系柔和', rule: '桌面、布料、器皿都挑跟後景色調相近、顏色不刺眼的。', fit: (me, base) => PC.d(me, base) + .3 * PC.chroma(me), nC: 2, nD: 1, riser: true },
+  { name: '明暗對比', rule: '桌面和後景明暗拉開；器皿再和桌面拉開明暗，主角會跳出來。', contrast: true, nC: 1, nD: 2, riser: false },
+  { name: '點綴色', rule: '底色維持中性，挑 1 個容器和 1 個軟裝當最鮮明的點綴色。', accent: true, nC: 2, nD: 1, riser: true },
+];
+const ab = (a, b) => Math.hypot(a[1] - b[1], a[2] - b[2]);
+
+function buildSets(key) {
+  const by = c => PROPS.filter(p => p.cat === c && sk(p.id) === key).sort(byId);
+  const used = new Set(), out = [];
+  const lab = p => (PC.main(p.id) || { lab: [50, 0, 0] }).lab;
+  const take = (cat, score, n = 1) => {
+    const got = by(cat).filter(p => !used.has(p.id)).map(p => ({ p, s: score(lab(p)) })).sort((a, b) => a.s - b.s || byId(a.p, b.p)).slice(0, n).map(x => x.p);
+    got.forEach(p => used.add(p.id));
+    return got;
+  };
+  const bgs = by('後景');
+  RULES.forEach((R, g) => {
+    const free = bgs.filter(p => !used.has(p.id));
+    const anchor = free.length ? free[Math.min(free.length - 1, Math.floor(g * free.length / 3))] : null;
+    if (anchor) used.add(anchor.id);
+    const A = anchor ? lab(anchor) : [60, 0, 0];
+    const near = ref => l => PC.d(l, ref) + .3 * PC.chroma(l);
+    const far = ref => l => -Math.abs(l[0] - ref[0]) + .4 * ab(l, ref);
+    const set = { 後景: anchor ? [anchor] : [] };
+    if (R.contrast) {
+      set.桌面 = take('桌面', far(A));
+      const T = set.桌面[0] ? lab(set.桌面[0]) : A;
+      set.布料 = take('布料', near(T));
+      set.容器 = take('容器', far(T), R.nC); set.餐具 = take('餐具', far(T), R.nD); set.軟裝 = take('軟裝', far(T));
+    } else {
+      set.桌面 = take('桌面', near(A));
+      const T = set.桌面[0] ? lab(set.桌面[0]) : A;
+      const base = [(A[0] + T[0]) / 2, (A[1] + T[1]) / 2, (A[2] + T[2]) / 2];
+      set.布料 = take('布料', near(base));
+      if (R.accent) {   // 點綴：色相和底色差 60 度以上、飽和度最高；另一個容器維持中性
+        const pop = l => -PC.chroma(l) * (PC.hueDiff(l, A) >= 60 ? 1 : .4) + .3 * Math.abs(l[0] - T[0]);
+        set.容器 = [...take('容器', pop, 1), ...take('容器', near(base), R.nC - 1)];
+        set.餐具 = take('餐具', near(base), R.nD);
+        set.軟裝 = take('軟裝', pop);
+      } else {
+        set.容器 = take('容器', near(base), R.nC); set.餐具 = take('餐具', near(base), R.nD); set.軟裝 = take('軟裝', near(base));
+      }
+    }
+    set.墊高 = R.riser ? take('墊高', near(set.桌面[0] ? lab(set.桌面[0]) : A)) : [];
+    out.push({ R, set });
+  });
+  return out;
+}
+
+// 拼貼位置（占拼貼板的百分比）：[left, bottom, width, 旋轉]
+const SLOT = { 布料: [[4, 5, 36, -4]], 容器: [[36, 12, 28, 0], [62, 6, 25, 2]], 餐具: [[15, 31, 20, -3], [48, 34, 18, 3]], 軟裝: [[73, 30, 23, 2]], 墊高: [[44, 1, 17, 0]] };
+const img = (p, cls, st) => `<img class="${cls}" ${st ? `style="${st}"` : ''} src="img/${p.id}.jpg" alt="${esc(p.name)}" title="${esc(p.name)}" loading="lazy">`;
+
+function boardHtml(set) {
+  let h = '';
+  if (set.後景[0]) h += img(set.後景[0], 'bg');
+  if (set.桌面[0]) h += img(set.桌面[0], 'tb');
+  for (const c of ['布料', '墊高', '軟裝', '容器', '餐具'])
+    set[c].forEach((p, i) => { const s = SLOT[c][i]; if (s) h += img(p, 'it', `left:${s[0]}%;bottom:${s[1]}%;width:${s[2]}%;transform:rotate(${s[3]}deg)`); });
+  return h;
+}
+
+function styleHtml(key) {
+  const sets = buildSets(key), n = PROPS.filter(p => sk(p.id) === key).length;
+  const scene = SCENE_READY.includes(key) ? `<div class="scene"><img src="img/scene/${key}.jpg" alt="${esc(STYLES[key])}實景範例"></div>` : '<div class="scene">實景範例圖<br>尚未生成</div>';
+  return `<section class="st" id="${key}" data-key="${key}"><div class="sthead"><div class="tx"><h2>${esc(STYLES[key])}</h2><p class="sub">本風格共 ${n} 件道具；下面 3 組自動搭配。</p></div>${scene}</div>
+  <div class="sets">${sets.map(({ R, set }, i) => {
+    const all = ['後景', '桌面', '布料', '容器', '餐具', '軟裝', '墊高'].flatMap(c => set[c].map(p => ({ c, p })));
+    return `<div class="set"><h3>${i + 1}. ${R.name}</h3><p class="rule">${R.rule}</p>
+      <div class="board">${boardHtml(set)}</div>
+      <div class="dots">${all.map(({ p }) => { const m = PC.main(p.id); return `<i style="background:${m ? m.hex : '#ccc'}"></i>`; }).join('')}</div>
+      <ul class="names">${all.map(({ c, p }) => `<li style="--c:${CAT_COLOR[c]}"><small>${c}</small><span>${esc(p.name)}</span></li>`).join('')}</ul>
+      <a class="apply" href="index.html?apply=${all.map(x => x.p.id).join(',')}">套用這組 →</a></div>`;
+  }).join('')}</div></section>`;
+}
+
+let cur = '';
+function show(key) {
+  cur = key;
+  document.querySelectorAll('#filter button').forEach(b => b.classList.toggle('on', b.dataset.k === key));
+  document.querySelectorAll('section.st').forEach(s => { s.hidden = !!key && s.dataset.key !== key; });
+  if (key) history.replaceState(null, '', '#' + key); else history.replaceState(null, '', location.pathname);
+  scrollTo(0, 0);
+}
+PC.load().then(() => {
+  const keys = Object.keys(STYLES);
+  $('#filter').innerHTML = `<button data-k="" class="on">全部 ${keys.length} 個風格</button>` + keys.map(k => `<button data-k="${k}">${esc(STYLES[k])}</button>`).join('');
+  $('#list').innerHTML = keys.map(styleHtml).join('');
+  $('#filter').addEventListener('click', e => { const b = e.target.closest('button'); if (b) show(b.dataset.k); });
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (STYLES[h]) show(h);
+}).catch(e => { $('#list').innerHTML = '<p class="empty">讀不到 colors.json，請用網址（http）開啟，不要直接點檔案。</p>'; });
+</script>
+</body>
+</html>

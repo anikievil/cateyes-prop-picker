@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>風格牆</title>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<meta name="theme-color" content="#1d1b19">
+<style>
+:root{--ink:#1d1b19;--paper:#f6f4f0;--card:#fff;--line:#e3ded6;--muted:#8a847b;--accent:#c9a46a}
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{margin:0;font-family:"Noto Sans TC","PingFang TC",system-ui,sans-serif;background:var(--paper);color:var(--ink)}
+header{position:sticky;top:0;z-index:5;background:var(--ink);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+header b{font-size:18px}header b span{color:var(--accent)}
+header nav{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+header nav a{color:#ddd;font-size:13px;text-decoration:none;border:1px solid #555;border-radius:999px;padding:6px 12px}
+.filters{position:sticky;top:52px;z-index:4;background:var(--paper);border-bottom:1px solid var(--line);display:flex;gap:8px;overflow-x:auto;padding:10px 16px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.filters button{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 14px;font-size:14px;cursor:pointer;color:inherit;font-family:inherit}
+.filters button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.filters button.hot{margin-left:auto;border-color:var(--accent)}
+.filters button.hot.on{background:var(--accent);color:var(--ink)}
+main{max-width:1400px;margin:0 auto;padding:14px 16px 60px}
+.hint{color:var(--muted);font-size:13px;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media(min-width:700px){.grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}}
+@media(min-width:1000px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(min-width:1350px){.grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;text-align:left;padding:0;font:inherit;color:inherit;display:flex;flex-direction:column}
+.card:hover{box-shadow:0 4px 14px #0002}
+.ph{position:relative;aspect-ratio:4/5;background:#e4e0d8;overflow:hidden}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph.miss img{display:none}
+.ph.miss::after{content:"生成中";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px;letter-spacing:2px}
+.ph .hits{position:absolute;right:6px;top:6px;background:#1d1b19cc;color:#fff;font-size:11px;border-radius:999px;padding:2px 8px}
+.info{padding:9px 10px 11px}
+.info b{display:block;font-size:15px}
+.info small{display:block;color:var(--muted);font-size:12px;line-height:1.45;margin-top:3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* 面板 */
+#mask{position:fixed;inset:0;background:#0007;z-index:20;display:none}
+#mask.show{display:block}
+#panel{position:fixed;z-index:21;background:var(--paper);display:flex;flex-direction:column;left:0;right:0;bottom:0;top:0;transform:translateY(100%);transition:transform .25s;visibility:hidden}
+#panel.show{transform:none;visibility:visible}
+@media(min-width:900px){#panel{left:auto;width:520px;top:0;transform:translateX(100%)}#panel.show{transform:none}}
+.ph-head{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--ink);color:#fff}
+.ph-head b{font-size:17px}.ph-head button{margin-left:auto;background:none;border:1px solid #666;color:#fff;border-radius:999px;padding:6px 14px;font-size:14px;cursor:pointer}
+.body{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px 16px 20px}
+.big{width:100%;max-width:420px;margin:0 auto;display:block}
+.tabs{display:flex;gap:8px;justify-content:center;margin:10px 0}
+.tabs button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 16px;font-size:14px;cursor:pointer;font-family:inherit;color:inherit}
+.tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+h3{font-size:15px;margin:14px 0 6px}
+.row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:6px;cursor:pointer}
+.row input{width:20px;height:20px;flex:none;accent-color:var(--ink)}
+.row .th{width:52px;height:52px;flex:none;border-radius:8px;background:#e4e0d8;overflow:hidden;position:relative}
+.row .th img{width:100%;height:100%;object-fit:cover;display:block}
+.row .th.miss img{display:none}
+.row .t{min-width:0;flex:1}
+.row .t small{color:var(--muted);font-size:12px}
+.row .t b{display:block;font-size:14px;overflow-wrap:anywhere}
+.actions{display:flex;gap:8px;padding:10px 16px;border-top:1px solid var(--line);background:#fffffff2}
+.actions button{flex:1;border-radius:10px;padding:12px;font-size:15px;cursor:pointer;font-family:inherit;border:1px solid var(--ink);background:#fff;color:var(--ink)}
+.actions button.pri{background:var(--ink);color:#fff}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 16px;border-radius:999px;font-size:14px;z-index:30;display:none}
+</style>
+</head>
+<body>
+<header>
+  <b>貓眼<span>風格牆</span></b>
+  <nav><a href="index.html">完整選物</a><a href="快速.html">快速選物</a><a href="風格範例.html">風格範例</a></nav>
+</header>
+<div class="filters" id="filters"></div>
+<main>
+  <p class="hint">點一張風格卡，看這組用了哪些道具，勾選後可直接帶去選物。</p>
+  <div class="grid" id="grid"></div>
+</main>
+<div id="mask"></div>
+<div id="panel" role="dialog" aria-modal="true">
+  <div class="ph-head"><b id="pTitle"></b><button id="pClose">關閉</button></div>
+  <div class="body">
+    <div class="ph big" id="pImg"><img alt=""></div>
+    <div class="tabs" id="pTabs"></div>
+    <h3>這組道具（勾選要帶走的）</h3>
+    <div id="pRows"></div>
+  </div>
+  <div class="actions"><button id="bCopy">複製道具清單</button><button class="pri" id="bUse">用這組排版</button></div>
+</div>
+<div id="toast"></div>
+<script src="props.js"></script>
+<script>
+const GROUPS = {
+  '台式':['taiwan','bubbletea','goose','rechao','teahouse'],
+  '日式':['wafu','kissaten','izakaya','onsen','ramen'],
+  '韓式':['korean','kbbq'],
+  '西式':['nordic','french','industrial','patisserie','diner','italian','steak','mexican','bakery','brunch','picnic'],
+  '港越泰':['chachaanteng','pho','thai','tropical','seaside','shaveice'],
+  '節慶':['midautumn','newyear','xmas','valentine'],
+  '通用':['hot','blackgold','wenqing']
+};
+const keyGroup = {}; Object.entries(GROUPS).forEach(([g, ks]) => ks.forEach(k => keyGroup[k] = g));
+const ORDER = ['parts'];
+const PART_ORDER = ['桌面','布料','後景','墊高','容器','餐具','軟裝'];
+const $ = id => document.getElementById(id);
+const byId = {}; PROPS.forEach(p => byId[p.id] = p);
+const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch (e) { return d } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch (e) {} };
+let CARDS = [], hits = lsGet('styleWallHits', {}), filter = '全部', cur = null, curN = 1, checked = {};
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pname = id => byId[id] ? byId[id].name : id;
+const psize = id => byId[id] && byId[id].size ? byId[id].size : '';
+const byStyle = k => CARDS.filter(c => c.style === k).sort((a, b) => a.id.localeCompare(b.id));
+const styleKeys = () => Object.keys(STYLES).filter(k => byStyle(k).length);
+function summary(c){
+  return '這組用了：' + PART_ORDER.filter(p => (c.parts[p] || []).length).map(p => p + ' ' + pname(c.parts[p][0])).join('、');
+}
+function missHandler(img){ img.addEventListener('error', () => img.parentNode.classList.add('miss')); }
+function renderFilters(){
+  const names = ['全部', ...Object.keys(GROUPS)];
+  $('filters').innerHTML = names.map(n => `<button data-f="${n}" class="${filter===n?'on':''}">${n}</button>`).join('') +
+    `<button data-f="熱門" class="hot ${filter==='熱門'?'on':''}">熱門</button>`;
+}
+function renderGrid(){
+  let keys = styleKeys();
+  if (filter === '熱門') keys = keys.slice().sort((a, b) => (hits[b] || 0) - (hits[a] || 0));
+  else if (filter !== '全部') keys = keys.filter(k => (keyGroup[k] || '通用') === filter);
+  $('grid').innerHTML = keys.map(k => {
+    const c = byStyle(k)[0], h = hits[k] || 0;
+    return `<button class="card" data-k="${k}"><div class="ph"><img loading="lazy" alt="${esc(STYLES[k])}" src="img/card/${c.id}.jpg">${h?`<span class="hits">${h} 次</span>`:''}</div><div class="info"><b>${esc(STYLES[k])}</b><small>${esc(summary(c))}</small></div></button>`;
+  }).join('') || '<p class="hint">這個分類還沒有風格卡。</p>';
+  $('grid').querySelectorAll('.ph img').forEach(missHandler);
+}
+function openStyle(k){
+  hits[k] = (hits[k] || 0) + 1; lsSet('styleWallHits', hits);
+  cur = k; curN = 1; showCard();
+  $('mask').classList.add('show'); $('panel').classList.add('show');
+  $('pTitle').textContent = STYLES[k];
+  document.body.style.overflow = 'hidden';
+  renderGrid();
+}
+function closePanel(){ $('mask').classList.remove('show'); $('panel').classList.remove('show'); document.body.style.overflow = ''; }
+function curCard(){ const l = byStyle(cur); return l[curN - 1] || l[0]; }
+function showCard(){
+  const l = byStyle(cur), c = curCard();
+  $('pTabs').innerHTML = l.map((_, i) => `<button data-n="${i+1}" class="${i+1===curN?'on':''}">場景 ${i+1}</button>`).join('');
+  $('pImg').classList.remove('miss');
+  const im = $('pImg').querySelector('img'); im.src = 'img/card/' + c.id + '.jpg';
+  checked = {};
+  let html = '';
+  PART_ORDER.forEach(p => (c.parts[p] || []).forEach((id, i) => {
+    checked[p + id] = true;
+    html += `<label class="row"><input type="checkbox" checked data-key="${esc(p+id)}" data-id="${esc(id)}"><div class="th"><img loading="lazy" alt="" src="img/${id}.jpg"></div><div class="t"><small>${p}</small><b>${esc(pname(id))}</b><small>${esc(psize(id))}</small></div></label>`;
+  }));
+  $('pRows').innerHTML = html;
+  $('pRows').querySelectorAll('.th img').forEach(missHandler);
+}
+function picked(){ return [...$('pRows').querySelectorAll('input:checked')].map(i => i.dataset.id); }
+function toast(t){ const e = $('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => e.style.display = 'none', 1800); }
+function copyText(t){
+  if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t);
+  return new Promise((res, rej) => { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy') ? res() : rej() } catch (e) { rej(e) } a.remove(); });
+}
+$('filters').onclick = e => { const b = e.target.closest('button'); if (!b) return; filter = b.dataset.f; renderFilters(); renderGrid(); };
+$('grid').onclick = e => { const b = e.target.closest('.card'); if (b) openStyle(b.dataset.k); };
+$('pTabs').onclick = e => { const b = e.target.closest('button'); if (!b) return; curN = +b.dataset.n; showCard(); };
+$('pClose').onclick = $('mask').onclick = closePanel;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+$('bCopy').onclick = () => {
+  const c = curCard();
+  const lines = [];
+  PART_ORDER.forEach(p => (c.parts[p] || []).forEach(id => {
+    const cb = $('pRows').querySelector(`input[data-key="${CSS.escape(p+id)}"]`);
+    if (cb && cb.checked) lines.push([STYLES[cur], p, pname(id), id].join('｜'));
+  }));
+  copyText(lines.join('\n')).then(() => toast('已複製 ' + lines.length + ' 項'), () => toast('複製失敗，請手動選取'));
+};
+$('bUse').onclick = () => {
+  const ids = picked();
+  if (!ids.length) { toast('請至少勾一項'); return; }
+  const c = curCard();
+  let S = lsGet('propPick', {}); if (!S || typeof S !== 'object') S = {};
+  S.props = ids; S['風格'] = [STYLES[cur]];
+  lsSet('propPick', S);
+  lsSet('styleWall', { style: cur, card: c.id, props: ids });
+  location.href = '快速.html';
+};
+fetch('風格卡.json').then(r => r.json()).then(d => { CARDS = d; renderFilters(); renderGrid(); })
+  .catch(() => { $('grid').innerHTML = '<p class="hint">讀不到風格卡.json（請用網址開啟，不要直接雙擊檔案）。</p>'; });
+</script>
+</body>
+</html>

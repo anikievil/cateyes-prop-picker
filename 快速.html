@@ -61,7 +61,8 @@ textarea{width:100%;min-height:180px;font:13px/1.6 inherit;padding:10px;border:1
 </style>
 </head>
 <body>
-<header><b>貓眼<span>快速選物</span></b><a href="index.html" id="toFull">完整版細調 →</a></header>
+<header><b>貓眼<span>快速選物</span></b><a href="風格牆.html" style="margin-left:auto">風格牆</a><a href="index.html" id="toFull">完整版細調 →</a></header>
+<div id="wall" hidden style="margin:10px 16px 0;padding:8px 12px;border-radius:10px;background:#fff4d6;border:1px solid #e8d39a;font-size:14px;display:flex;gap:8px;align-items:center"></div>
 <main>
 <p class="sub">四步選完，下面直接出工作單。店家：鵝樂香（菜名照菜單）。</p>
 
@@ -119,6 +120,8 @@ const norm = n => n.replace(/（.*?）/g, '').replace(/^燙/, '').replace(/^鵝�
 const catOf = d => /湯$/.test(d) ? '湯' : /麵|飯|冬粉/.test(d) ? '主食' : /切盤/.test(d) ? '切盤' : '小菜';   // 用菜名猜分類，避免「當歸鵝血糕湯」對到「鵝血糕」小菜
 const cutsFor = d => CUT.filter(c => { const a = norm(d), b = norm(c.name); if (a === b) return true; if (c.cat !== catOf(d)) return false; return a.includes(b) || b.includes(a); });
 try { Q = { ...Q, ...JSON.parse(localStorage.getItem('quickPick') || '{}') }; Q.cut = Q.cut || {}; } catch (e) {}
+// 風格牆帶過來的整組道具（風格牆.html「用這組排版」寫的 localStorage.styleWall）：收進 Q.wall 後清掉，pickProps 會優先放這些
+try { const w = JSON.parse(localStorage.getItem('styleWall') || 'null'); if (w && w.props) { Q.wall = { style: w.style, name: (PROPS.find(p => p.id === w.props[0]) || {}).style || '', props: w.props }; localStorage.removeItem('styleWall'); } } catch (e) {}
 const save = () => { try { localStorage.setItem('quickPick', JSON.stringify(Q)) } catch (e) {} };
 if (Q.space && !CHOICES.空間.some(t => t.name === Q.space)) { Q.space = ''; Q.spaceAuto = true; }   // 舊版範本名稱作廢
 
@@ -135,6 +138,10 @@ function pickProps() {
   if (Q.drink === '一杯啤酒') names.push('空玻璃啤酒杯（無字）'); if (Q.drink === '一杯茶') names.push('空玻璃茶杯');
   const seen = new Set();
   let ps = names.filter(n => !seen.has(n) && seen.add(n)).map(n => PROPS.find(p => p.name === n && p.style === '鵝肉小吃') || PROPS.find(p => p.name === n)).filter(Boolean);
+  if (Q.wall && Q.wall.props) {   // 風格牆帶入的整組排最前面（桌面／布料／後景是場景，不佔道具名額）
+    const wp = Q.wall.props.map(id => PROPS.find(p => p.id === id)).filter(p => p && !/桌面|布料|後景/.test(p.cat));
+    ps = [...wp, ...ps.filter(p => !wp.includes(p))];
+  }
   const lv = CHOICES.構圖.find(l => l.name === (CHOICES.空間.find(s => s.name === Q.space) || {}).level);
   const max = lv ? Math.min(Math.max(lv.max, 5), 7) : 6;   // 照構圖等級控制數量，至少 5 樣（七組評分：太空）、最多 7 樣
   const drink = ps.filter(p => /杯/.test(p.name)); ps = ps.filter(p => !/杯/.test(p.name)).slice(0, max - drink.length);
@@ -143,12 +150,13 @@ function pickProps() {
 function buildPrompt(props) {
   const sp = CHOICES.空間.find(s => s.name === Q.space), tone = CHOICES.光調.find(t => t.name === Q.tone), use = USES.find(u => u.name === Q.use);
   const [main, ...sides] = Q.dishes, set = Q.dishes.length >= 3 ? CHOICES.套餐.find(t => t.name === '一主二副') : null;
-  const parts = [`商品攝影情境模擬圖，鵝肉小吃風格，主角是「${Q.dishes.join('、')}」（第一個是主菜）。主菜「${main}」${sides.length ? `，副菜「${sides.join('、')}」放在主菜後方` : ''}。`];
+  const parts = [`商品攝影情境模擬圖，${Q.wall && Q.wall.name ? Q.wall.name : '鵝肉小吃'}風格，主角是「${Q.dishes.join('、')}」（第一個是主菜）。主菜「${main}」${sides.length ? `，副菜「${sides.join('、')}」放在主菜後方` : ''}。`];
   if (set) parts.push(set.prompt + '。');
   if (sp) parts.push(sp.prompt.replace(/直式 2:3/, use && use.ratio !== '2:3' ? (use.ratio === '3:2' ? '橫式 3:2' : '直式 ' + use.ratio) : '直式 2:3') + '。');
   // 沒有牆的範本（同款雙碗、滿版套餐）：光調裡「牆、窗紗緊貼桌後」那句要拿掉，不然和範本互相矛盾
   if (tone) parts.push((sp && !sp.wall ? tone.prompt.replace(/；?淺色牆或白窗紗緊貼桌後，?/, '；').replace(/深色舊木牆緊貼桌後；?/, '') : tone.prompt) + '。');
   if (use && use.ws) parts.push(use.ws + '。');
+  if (Q.wall && Q.wall.props) { const sc = Q.wall.props.map(id => PROPS.find(p => p.id === id)).filter(p => p && /桌面|布料|後景/.test(p.cat)); if (sc.length) parts.push(`場景：${sc.map(p => p.cat + '用' + p.name).join('、')}。`); }
   parts.push(`道具：${props.map(p => p.name).join('、')}，每樣都小、不搶主菜，放在碗盤之間的空位與後方，越後面越模糊。`);
   parts.push('擺盤裝飾只用薑絲。如果畫面有飲料，只有一杯。包裝與道具上不要出現任何文字、logo 或圖案。不要人物、不要手、不要蒸氣或煙。所有物件的陰影朝同一個方向。');
   return parts.join('\n');
@@ -231,6 +239,7 @@ function job(props, pr) {
     '', '提示詞：', pr, '', '請照作業規則：先報價等我回 k；出圖要過鐵則 11 角度檢查與基準 19 條（作業規則第九節）；菜用去背分類裡角度對的實拍圖。'].filter(l => l !== null).join('\n').replace(/\n{3,}/g, '\n\n');
 }
 function render() {
+  const wEl = $('#wall'); if (wEl) { if (Q.wall && Q.wall.props) { wEl.hidden = false; wEl.innerHTML = `風格牆帶入：<b>${esc(Q.wall.name || Q.wall.style)}</b> 整組 ${Q.wall.props.length} 件，排版時優先放這些 <button id="wallX" style="margin-left:auto;border:0;background:none;cursor:pointer">✕ 不用</button>`; $('#wallX').onclick = () => { delete Q.wall; save(); render(); }; } else wEl.hidden = true; }
   $('#dishes').innerHTML = Object.entries(MENU).map(([g, list]) => `<div class="grp">${g}</div><div class="chips">${list.map(d => { const i = Q.dishes.indexOf(d); return `<button data-d="${esc(d)}" class="${i >= 0 ? 'on' : ''}">${i >= 0 ? `<b>${i + 1}</b>` : ''}${esc(d)}</button>`; }).join('')}</div>`).join('');
   $('#tone').innerHTML = CHOICES.光調.map(t => `<button data-t="${t.name}" class="${t.name === '亮調' ? 'lt' : 'dk'} ${Q.tone === t.name ? 'on' : ''}"><b>${Q.tone === t.name ? '✓ ' : ''}${t.name}</b><small>${t.note}</small></button>`).join('');
   if (Q.spaceAuto && Q.dishes.length) Q.space = spaceFor(Q.dishes[0]);   // 照主菜自動建議版型，自己點過就不再改

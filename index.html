@@ -114,6 +114,32 @@ label.tog{font-size:13px;color:var(--muted);display:inline-flex;gap:6px;align-it
 textarea{width:100%;min-height:150px;font:14px/1.6 inherit;padding:10px;border:1px solid var(--line);border-radius:8px}
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
 .bar button{border:1px solid var(--ink);background:#fff;border-radius:999px;padding:8px 16px;cursor:pointer}
+/* 丟參考圖選物 */
+.refbtn{background:none;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:7px 12px;font-size:13px;cursor:pointer;white-space:nowrap}
+.refbtn.on{background:var(--accent);color:var(--ink)}
+.toplink{color:#ddd;font-size:13px;text-decoration:none;border:1px solid #555;border-radius:999px;padding:7px 12px;white-space:nowrap}
+#refBox{background:#fff;border-bottom:1px solid var(--line);padding:16px 18px 20px}
+#refBox .inner{max-width:1100px;margin:0 auto}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:16px;text-align:center;color:var(--muted);font-size:14px;background:#fbfaf7}
+.drop.over{border-color:var(--accent);background:var(--warn)}
+.drop label{display:inline-block;margin:6px 0;background:var(--ink);color:#fff;border-radius:999px;padding:9px 18px;cursor:pointer;font-size:14px}
+.drop input{display:none}
+.refrow{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;margin-top:14px}
+.refrow>img{width:120px;height:120px;object-fit:cover;border-radius:10px;background:#e9e6e1}
+.swatches{display:flex;gap:6px;flex-wrap:wrap}
+.swatches div{width:72px;text-align:center;font-size:11px;color:var(--muted)}
+.swatches i{display:block;height:46px;border-radius:8px;border:1px solid #0002;margin-bottom:3px}
+.rcats{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px 18px;margin-top:6px}
+.rcat .grp{margin:10px 0 6px;border-top:0;padding-top:0}
+.rrow{display:flex;gap:8px;flex-wrap:wrap}
+.rit{width:84px;border:2px solid transparent;background:var(--card);border-radius:8px;padding:0;cursor:pointer;overflow:hidden;font-size:11px;text-align:left;box-shadow:0 1px 2px #0001}
+.rit.on{border-color:var(--ink)}
+.rit img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#e9e6e1}
+.rit span{display:block;padding:3px 5px;line-height:1.3;height:3.3em;overflow:hidden}
+.rbtns{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 0}
+.rbtns button{border:1px solid var(--ink);background:#fff;border-radius:999px;padding:9px 16px;cursor:pointer;font-size:14px}
+.rbtns button.pri{background:var(--ink);color:#fff}
+.toast{font-size:13px;color:#2f7a45;align-self:center}
 @media (max-width:760px){main{grid-template-columns:1fr}aside{border-left:0;border-top:1px solid var(--line)}
   header{gap:8px;padding:8px 12px}nav{order:3;flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px}nav button{flex:none}
   #search{flex:1;min-width:0}.done{padding:8px 12px}.grid{grid-template-columns:repeat(2,1fr)}}
@@ -125,9 +151,17 @@ textarea{width:100%;min-height:150px;font:14px/1.6 inherit;padding:10px;border:1
   <b>貓眼<span>道具選物</span></b>
   <nav id="nav"></nav>
   <input id="search" placeholder="搜尋：亞麻、搪瓷、黃銅…">
+  <button class="refbtn" id="refBtn">📷 丟參考圖選物</button>
+  <a href="風格範例.html" class="toplink">風格範例</a>
   <a href="快速.html" style="color:#ddd;font-size:13px;text-decoration:none;border:1px solid #555;border-radius:999px;padding:7px 12px;white-space:nowrap">快速版</a>
   <button class="done" id="finish">完成，出清單</button>
 </header>
+<section id="refBox" hidden><div class="inner">
+  <h2>📷 丟參考圖選物</h2>
+  <p class="sub">丟一張你喜歡的參考照，抓出它的主色與明暗，推薦最搭的風格和道具。<b>參考圖只在你的瀏覽器分析，不會上傳。</b></p>
+  <div class="drop" id="refDrop">把參考圖拖到這裡，或<br><label>選擇圖片<input type="file" id="refFile" accept="image/*"></label></div>
+  <div id="refOut"></div>
+</div></section>
 <dialog id="zoomDlg"><img alt=""><p></p></dialog>
 <main id="app">
   <section id="panel"></section>
@@ -135,6 +169,7 @@ textarea{width:100%;min-height:150px;font:14px/1.6 inherit;padding:10px;border:1
 </main>
 <div id="sheetWrap" hidden></div>
 <script src="props.js"></script>
+<script src="palette.js"></script>
 <script>
 // 狀態只存在這台裝置（localStorage），清掉也不影響使用
 const STEPS = ['業態・風格', '角度・比例', '光調・故事', '空間・構圖', ...CATS];
@@ -267,7 +302,7 @@ function renderSide() {
 }
 
 function renderNav() {
-  $('#nav').innerHTML = STEPS.map((s, i) => `<button class="${i === step ? 'on' : ''}" data-step="${i}">${'①②③④⑤⑥⑦⑧⑨⑩⑪'[i]} ${s}</button>`).join('');
+  $('#nav').innerHTML = STEPS.map((s, i) => `<button class="${i === step ? 'on' : ''}" data-step="${i}">${'①②③④⑤⑥⑦⑧⑨⑩⑪⑫'[i]} ${s}</button>`).join('');
 }
 const render = () => { renderNav(); renderPanel(); renderSide(); save(); };
 
@@ -510,6 +545,95 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', e => { const d = e.data, m = $('#cacheMsg'); if (d && d.type === 'cacheProgress' && m) m.textContent = d.done < d.total ? `下載中 ${d.done}／${d.total}` : `完成 ${d.total - d.fail} 張${d.fail ? `，${d.fail} 張失敗（網路恢復後再按一次）` : '，離線也看得到'}`; });
   document.addEventListener('click', e => { if (e.target.id !== 'cacheAll') return; navigator.serviceWorker.ready.then(r => { r.active.postMessage({ type: 'cacheAll', urls: [...new Set(PROPS.map(p => `img/${p.id}.jpg`))] }); $('#cacheMsg').textContent = '開始下載…'; }); });
 }
+// ===== 丟參考圖選物（功能 A）：圖只在瀏覽器裡縮小分析，不上傳、不存檔 =====
+const REF_CATS = ['桌面', '布料', '後景', '容器', '餐具', '軟裝', '墊高'];
+const styleKey = id => id.split('-')[0];
+const PBYID = Object.fromEntries(PROPS.map(p => [p.id, p]));
+let REF = null, refUrl = '';
+const COLORS_READY = PC.load().catch(() => null);
+
+function analyzeRef(file) {
+  if (refUrl) URL.revokeObjectURL(refUrl);
+  refUrl = URL.createObjectURL(file);
+  const im = new Image();
+  im.onload = async () => {
+    await COLORS_READY;
+    const sc = 64 / Math.max(im.naturalWidth, im.naturalHeight), w = Math.max(1, Math.round(im.naturalWidth * sc)), h = Math.max(1, Math.round(im.naturalHeight * sc));
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0, w, h);
+    const dat = g.getImageData(0, 0, w, h).data, px = [];
+    for (let i = 0; i < dat.length; i += 4) if (dat[i + 3] > 128) px.push([dat[i], dat[i + 1], dat[i + 2]]);
+    const pal = PC.kmeans(px, 5);
+    const L = pal.reduce((s, c) => s + c.lab[0] * c.w, 0);
+    const tone = L < 42 ? '暗調' : L > 62 ? '亮調' : (L >= 50 ? '亮調' : '暗調'), toneNote = L < 42 || L > 62 ? '' : '（中間調，偏' + (L >= 50 ? '亮' : '暗') + '）';
+    // 風格排名：風格內每件道具和參考色盤的平均距離
+    const sum = {}, cnt = {};
+    for (const p of PROPS) { const k = styleKey(p.id); sum[k] = (sum[k] || 0) + PC.dist(PC.pal(p.id), pal); cnt[k] = (cnt[k] || 0) + 1; }
+    const rank = Object.keys(sum).map(k => ({ k, name: STYLES[k], d: sum[k] / cnt[k] })).sort((a, b) => a.d - b.d || (a.k < b.k ? -1 : 1));
+    REF = { name: file.name, pal, L, tone, toneNote, rank, top: rank.slice(0, 3), sel: rank[0].k };
+    paintRef();
+  };
+  im.onerror = () => { $('#refOut').innerHTML = '<div class="warn">這個檔案讀不出來，換一張 JPG／PNG 試試。</div>'; };
+  im.src = refUrl;
+}
+function refPicks(k) {   // 該風格每類最搭的前 4 件
+  const pal = REF.pal, out = {};
+  for (const c of REF_CATS) out[c] = PROPS.filter(p => p.cat === c && styleKey(p.id) === k).map(p => ({ p, d: PC.dist(PC.pal(p.id), pal) })).sort((a, b) => a.d - b.d || (a.p.id < b.p.id ? -1 : 1)).slice(0, 4).map(x => x.p);
+  return out;
+}
+function paintRef() {
+  if (!REF) return;
+  const picks = refPicks(REF.sel);
+  $('#refOut').innerHTML = `<div class="refrow"><img src="${refUrl}" alt="參考圖縮圖">
+    <div><h3 style="margin-top:0">主色（5 色）</h3><div class="swatches">${REF.pal.map(c => `<div><i style="background:${c.hex}"></i>${c.hex}<br>${Math.round(c.w * 100)}%</div>`).join('')}</div>
+    <p class="sub" style="margin:10px 0 0">整體明暗：<b>${REF.tone}</b>${REF.toneNote}（亮度 ${Math.round(REF.L)}／100）｜建議光調選「${REF.tone}」</p></div></div>
+    <h3>最搭的風格（點選切換）</h3><div class="chips">${REF.top.map((r, i) => `<button class="chip ${r.k === REF.sel ? 'on' : ''}" data-rs="${r.k}">${r.k === REF.sel ? '✓ ' : ''}${i + 1}. ${esc(r.name)}<small>色差 ${r.d.toFixed(1)}</small></button>`).join('')}</div>
+    <h3>「${esc(STYLES[REF.sel])}」裡顏色最搭的道具（點一下加入／取消）</h3>
+    <div class="rcats">${REF_CATS.filter(c => picks[c].length).map(c => `<div class="rcat"><div class="grp"><i style="background:${CAT_COLOR[c]}"></i>${c}</div><div class="rrow">${picks[c].map(p => `<button class="rit ${S.props.includes(p.id) ? 'on' : ''}" data-rid="${p.id}" title="${esc(p.name)}"><img src="img/${p.id}.jpg" alt=""><span>${S.props.includes(p.id) ? '✓ ' : ''}${esc(p.name)}</span></button>`).join('')}</div></div>`).join('')}</div>
+    <div class="rbtns"><button class="pri" id="refAll">全部加入（每類第 1 名）</button><button id="refClaude">交給 Claude 細修（複製文字）</button><span class="toast" id="refToast"></span></div>`;
+}
+function claudeText() {
+  if (!REF) return '';
+  const picks = refPicks(REF.sel);
+  const list = REF_CATS.filter(c => picks[c].length).map(c => `${c}：` + picks[c].map(p => `${p.id}（${p.name}）`).join('、')).join('\n');
+  return `【參考圖選物，請細修】
+參考圖檔名：${REF.name}
+抽出的色盤：${REF.pal.map(c => `${c.hex}（${Math.round(c.w * 100)}%）`).join('、')}
+明暗判斷：${REF.tone}${REF.toneNote}，平均亮度 ${Math.round(REF.L)}／100
+推薦風格：${REF.top.map((r, i) => `${i + 1}. ${r.name}（${r.k}，色差 ${r.d.toFixed(1)}）`).join('；')}
+目前選中的風格：${STYLES[REF.sel]}
+目前推薦的道具（依色差由近到遠）：
+${list}
+
+我會在對話附上這張參考圖，請看構圖、材質、光線，從道具庫挑更準的組合並說明理由。`;
+}
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch (e) {}
+  try { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); const ok = document.execCommand('copy'); a.remove(); return ok; } catch (e) { return false; }
+}
+$('#refBtn').addEventListener('click', () => { const b = $('#refBox'); b.hidden = !b.hidden; $('#refBtn').classList.toggle('on', !b.hidden); });
+$('#refFile').addEventListener('change', e => { const f = e.target.files[0]; if (f) analyzeRef(f); e.target.value = ''; });
+const drop = $('#refDrop');
+['dragenter', 'dragover'].forEach(n => drop.addEventListener(n, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(n => drop.addEventListener(n, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { const f = [...e.dataTransfer.files].find(x => x.type.startsWith('image/')); if (f) analyzeRef(f); });
+$('#refBox').addEventListener('click', async e => {
+  const rs = e.target.closest('[data-rs]'), ri = e.target.closest('[data-rid]');
+  if (rs) { REF.sel = rs.dataset.rs; paintRef(); }
+  else if (ri) { const id = ri.dataset.rid; S.props = S.props.includes(id) ? S.props.filter(x => x !== id) : [...S.props, id]; peek = S.props.includes(id) ? id : ''; render(); paintRef(); }
+  else if (e.target.id === 'refAll') { const picks = refPicks(REF.sel); let n = 0; REF_CATS.forEach(c => { const p = picks[c][0]; if (p && !S.props.includes(p.id)) { S.props.push(p.id); n++; } }); render(); paintRef(); $('#refToast').textContent = `已加入 ${n} 件到右側已選清單`; }
+  else if (e.target.id === 'refClaude') { const ok = await copyText(claudeText()); $('#refToast').textContent = ok ? '已複製，貼到對話裡並附上參考圖' : '複製失敗，請改用手動選取'; }
+});
+// 從「風格範例」頁套用一組：?apply=id1,id2,…（加進已選清單，不會清掉原本的）
+(() => {
+  const q = new URLSearchParams(location.search).get('apply'); if (!q) return;
+  const ids = q.split(',').filter(id => PBYID[id]);
+  ids.forEach(id => { if (!S.props.includes(id)) S.props.push(id); });
+  if (ids.length && !S.風格.length) S.風格 = [STYLES[styleKey(ids[0])]];
+  history.replaceState(null, '', location.pathname);
+  setTimeout(() => { const t = document.createElement('div'); t.className = 'warn'; t.textContent = `已從風格範例帶入 ${ids.length} 件道具，看右側已選清單。`; $('#panel').prepend(t); }, 0);
+})();
+
 render();
 </script>
 </body>
