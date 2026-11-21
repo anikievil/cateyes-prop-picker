@@ -30,6 +30,9 @@ section.st{margin:0 0 40px;scroll-margin-top:110px}
 .set{background:var(--card);border-radius:12px;box-shadow:0 1px 3px #0002;padding:12px;min-width:0}
 .set h3{margin:0 0 2px;font-size:16px;border-left:4px solid var(--accent);padding-left:8px}
 .set .rule{margin:0 0 8px;font-size:12px;color:var(--muted)}
+.photo{display:block;aspect-ratio:4/5;border-radius:8px;overflow:hidden;background:#e9e6e1}
+.photo img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-note{font-size:12px;color:var(--muted);margin:6px 0 0}
 .board{position:relative;aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:#d9d5ce}
 .board>img{position:absolute;object-fit:cover;display:block;background:#e9e6e1}
 .board .bg{inset:0;width:100%;height:100%;filter:brightness(.92)}
@@ -52,7 +55,7 @@ ul.names small{color:var(--muted);flex:none;width:2.6em}
 </header>
 <div id="filter"></div>
 <main>
-  <p class="sub">每個風格自動配 3 組搭配（規則固定，同一份資料每次結果一樣）。點「套用這組」會回到選物頁，並把這組道具加進已選清單。道具圖是 AI 生的，拍攝前要確認實物。</p>
+  <p class="sub">每個風格有 3 張已排好的整體照，下面列出照片裡用到的道具。點「套用這組」會回到選物頁，並把這組道具加進已選清單。照片和道具圖都是 AI 生的，拍攝前要確認實物。</p>
   <div id="list"></div>
 </main>
 <script src="props.js"></script>
@@ -129,8 +132,24 @@ function boardHtml(set) {
   return h;
 }
 
+let CARDS = {};  // 風格卡.json：每個風格 3 張已排好的整體照，道具清單照那張照片
+function cardSetHtml(c, i) {
+  const byId = id => PROPS.find(p => p.id === id);
+  const all = ['後景', '桌面', '布料', '容器', '餐具', '軟裝', '墊高'].flatMap(k => (c.parts[k] || []).map(byId).filter(Boolean).map(p => ({ c: k, p })));
+  return `<div class="set"><h3>整體範例 ${i + 1}</h3><p class="rule">已排好的完整畫面；下面是這張照片用到的道具。</p>
+    <a class="photo" href="img/card/${c.id}.jpg" target="_blank" rel="noopener"><img src="img/card/${c.id}.jpg" alt="${esc(STYLES[c.style])}整體範例 ${i + 1}" loading="lazy"></a>
+    <p class="photo-note">點照片看大圖。照片是 AI 模擬，實拍以實物為準。</p>
+    <div class="dots">${all.map(({ p }) => { const m = PC.main(p.id); return `<i style="background:${m ? m.hex : '#ccc'}"></i>`; }).join('')}</div>
+    <ul class="names">${all.map(({ c, p }) => `<li style="--c:${CAT_COLOR[c]}"><small>${c}</small><span>${esc(p.name)}</span></li>`).join('')}</ul>
+    <a class="apply" href="index.html?apply=${all.map(x => x.p.id).join(',')}">套用這組 →</a></div>`;
+}
+
 function styleHtml(key) {
   const sets = buildSets(key), n = PROPS.filter(p => sk(p.id) === key).length;
+  if ((CARDS[key] || []).length) {
+    return `<section class="st" id="${key}" data-key="${key}"><div class="sthead"><div class="tx"><h2>${esc(STYLES[key])}</h2><p class="sub">本風格共 ${n} 件道具；下面 ${CARDS[key].length} 張是已排好的整體照。</p></div></div>
+  <div class="sets">${CARDS[key].map(cardSetHtml).join('')}</div></section>`;
+  }
   const scene = SCENE_READY.includes(key) ? `<div class="scene"><img src="img/scene/${key}.jpg" alt="${esc(STYLES[key])}實景範例"></div>` : '<div class="scene">實景範例圖<br>尚未生成</div>';
   return `<section class="st" id="${key}" data-key="${key}"><div class="sthead"><div class="tx"><h2>${esc(STYLES[key])}</h2><p class="sub">本風格共 ${n} 件道具；下面 3 組自動搭配。</p></div>${scene}</div>
   <div class="sets">${sets.map(({ R, set }, i) => {
@@ -151,7 +170,8 @@ function show(key) {
   if (key) history.replaceState(null, '', '#' + key); else history.replaceState(null, '', location.pathname);
   scrollTo(0, 0);
 }
-PC.load().then(() => {
+PC.load().then(() => fetch('風格卡.json').then(r => r.ok ? r.json() : []).catch(() => [])).then(list => {
+  for (const c of list) (CARDS[c.style] = CARDS[c.style] || []).push(c);
   const keys = Object.keys(STYLES);
   $('#filter').innerHTML = `<button data-k="" class="on">全部 ${keys.length} 個風格</button>` + keys.map(k => `<button data-k="${k}">${esc(STYLES[k])}</button>`).join('');
   $('#list').innerHTML = keys.map(styleHtml).join('');
